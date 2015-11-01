@@ -28,3 +28,9 @@ clean:
 	rm -f rc.s a.out
 	rm -rf bin/
 
+CC=cc
+compile: 
+	$(CC) rc.s $(PUBLIC)/input.c $(PUBLIC)/output.s $(LINKOBJ)
+
+
+

@@ -29,6 +29,7 @@ class MyParser extends parser
     private boolean structFuncCall = false; // if function called belongs to a struct
     private STO callingStruct; // used for funcall woth dot operator outisde of struct
     private boolean newCall = false; // new statement
+    private AssemblyCodeGenerator codegen;
 
 
 	private SymbolTable m_symtab;
@@ -39,6 +40,7 @@ class MyParser extends parser
 	{
 		m_lexer = lexer;
 		m_symtab = new SymbolTable();
+        codegen = new AssemblyCodeGenerator("rc.s");
 		m_errors = errors;
 		m_debugMode = debugMode;
 		m_nNumErrors = 0;
@@ -173,6 +175,7 @@ class MyParser extends parser
 	//----------------------------------------------------------------
 	void DoProgramEnd()
 	{
+        codegen.dispose();
 		m_symtab.closeScope();
 	}
 
@@ -579,7 +582,10 @@ class MyParser extends parser
             else{            
 
                 if(expr == null) {
+                    
               	    sto = new VarSTO(id,t);
+                    //assembly for uninit global var decl
+                    codegen.DoGlobalVarDecl(sto);
 		            m_symtab.insert(sto);
                     return;
                 }
@@ -2669,6 +2675,13 @@ class MyParser extends parser
         
 
     }
+
+
+    //------------------------------------------------------------------------
+    //test
+    //-----------------------------------------------------------------------
+
+
 
 
 }
