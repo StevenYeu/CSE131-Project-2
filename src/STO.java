@@ -15,6 +15,9 @@ abstract class STO
     public boolean flag = false; // check if parameter is by reference  or value
     private boolean thisTag = false;
     private boolean oTag = false;
+    private String offset;
+    private String base;
+
 
 	//----------------------------------------------------------------
 	//
@@ -34,6 +37,22 @@ abstract class STO
 		setIsAddressable(false);
 		setIsModifiable(false);
 	}
+
+    //----------------------------------------------------------------
+    //
+    //----------------------------------------------------------------
+    public void setOffset(String o){
+         offset = o;
+    }
+
+    public void setBase(String b){
+        base = b;
+    }
+
+    
+    public String getAddress(){
+        return base.concat(offset);    
+    }
 
 	//----------------------------------------------------------------
 	//
@@ -127,6 +146,8 @@ abstract class STO
     public void setOTag(boolean b) {
       thisTag = b;
     }
+
+    
 
 
 

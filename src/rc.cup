@@ -75,7 +75,7 @@ terminal
     T_SIZEOF,
     T_SLASH,
     T_STAR,
-    T_STATIC,
+    //T_STATIC,
     T_STRUCTDEF,
     T_THIS,
     T_TILDE,
@@ -89,7 +89,8 @@ terminal String
     T_INT_LITERAL,
     T_STR_LITERAL,
     T_ID_U,
-    T_ID
+    T_ID,
+    T_STATIC
     ;
 
 
@@ -135,8 +136,8 @@ non terminal
     ReturnStmt,
     ReadStmt,
     WriteStmt,
-    WritePairList,
-    WritePair,
+    //WritePairList,
+    //WritePair,
     ConstExpr,
     // moved ExprList
     UnarySign,
@@ -175,7 +176,8 @@ non terminal STO
     Expr8,
     Designator,
     Designator2,
-    Designator3
+    Designator3,
+    WritePair
     ;
 
 non terminal Type
@@ -198,7 +200,8 @@ non terminal Vector
     OptPointerList,
     PointerList,
     OptStmtList,
-    StmtList
+    StmtList,
+    WritePairList
     ;
 
 //--------------------------------------------------------------------
@@ -244,7 +247,7 @@ ExternDecl ::=      T_EXTERN DecoratedBasicType:_2 T_ID:_3 OptArrayList:_4
 
 VarDecl ::=         OptStatic:_1 DecoratedType:_2 T_ID:_3 OptArrayList:_4 OptInit:_5
                     {:
-                        ((MyParser) parser).DoVarDecl2 (_3,_2,_4,((STO)_5)); //changed
+                        ((MyParser) parser).DoVarDecl2 (((String)_1),_3,_2,_4,((STO)_5)); //Done
                     :}
                     T_SEMI
     |               OptStatic:_1 T_AUTO T_ID:_3 T_ASSIGN Expr:_5 
@@ -275,6 +278,9 @@ ConstDecl ::=       OptStatic:_1 T_CONST BasicType:_2 T_ID:_3 T_ASSIGN ConstExpr
 
 
 OptStatic ::=       T_STATIC
+                    {:
+                        RESULT = "static";
+                    :}
     |               /* empty */
     ;
 
@@ -742,17 +748,35 @@ ReadStmt ::=        T_CIN T_ISTREAM Designator T_SEMI
     ;
 
 
-WriteStmt ::=       T_COUT T_OSTREAM WritePairList T_SEMI
+WriteStmt ::=       T_COUT T_OSTREAM WritePairList:_1 T_SEMI
+                    {:
+                        ((MyParser) parser).DoPrint(_1);
+                    :}
     ;
 
 
-WritePairList ::=   WritePair
-    |               WritePairList T_OSTREAM WritePair
+WritePairList ::=   WritePair:_1
+                    {:
+                        RESULT = new Vector<STO>();
+                        RESULT.addElement(_1);
+                    :}
+    |               WritePairList:_1 T_OSTREAM WritePair:_2
+                    {:
+                        RESULT = _1;
+                        RESULT.addElement(_2);
+                    :}
     ;
 
 
-WritePair ::=       Expr
+WritePair ::=       Expr:_1
+                    {:
+                        RESULT = _1;
+                    :}
+
     |               T_ENDL
+                    {:
+                        RESULT = new ExprSTO("endl");
+                    :}
     ;
 
 

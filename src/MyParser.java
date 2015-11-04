@@ -168,6 +168,7 @@ class MyParser extends parser
 	{
 		// Opens the global scope.
 		m_symtab.openScope();
+        codegen.formatHeader();
 	}
 
 	//----------------------------------------------------------------
@@ -474,8 +475,9 @@ class MyParser extends parser
     //----------------------------------------------------------------
 	//
 	//----------------------------------------------------------------
-	void DoVarDecl2(String id, Type t, Vector<STO> arraylist, STO expr)
+	void DoVarDecl2(String optstatic,String id, Type t, Vector<STO> arraylist, STO expr)
 	{
+
         int numDim = arraylist.size();
         VarSTO sto;
         if( expr instanceof ErrorSTO) {
@@ -484,10 +486,10 @@ class MyParser extends parser
         }
 
         if (m_symtab.accessLocal(id) != null){
-		        m_nNumErrors++;
-		        m_errors.print(Formatter.toString(ErrorMsg.redeclared_id, id));
+		    m_nNumErrors++;
+		    m_errors.print(Formatter.toString(ErrorMsg.redeclared_id, id));
             return;
-		    }
+		}
 
 
         if(numDim > 0)
@@ -534,9 +536,7 @@ class MyParser extends parser
                   if((arr.indexOf("]")+1) != -1){
                      arr = arr.substring(arr.indexOf("]")+1);
                   }
-                 // else {
-                    // arr = arr;
-                 // }
+
                   ArrayType typ = new ArrayType(t.getName()+arr, ((ConstSTO)sizeSto).getIntValue(),numDim-i);
                   aTopType.addNext(typ);
                 }
@@ -585,7 +585,14 @@ class MyParser extends parser
                     
               	    sto = new VarSTO(id,t);
                     //assembly for uninit global var decl
-                    codegen.DoGlobalVarDecl(sto);
+
+            
+
+                    if(m_symtab.getLevel() == 0 ||  (optstatic != null)){
+                        sto.setBase("%g0");
+                        sto.setOffset(id);
+                        codegen.DoGlobalVarDecl(sto);
+                    }
 		            m_symtab.insert(sto);
                     return;
                 }
@@ -961,6 +968,15 @@ class MyParser extends parser
         sto.setReturnType(t);
         sto.setOTag(true); // tag to exclude self from overload check
         m_symtab.insert(sto);
+
+        //WRITE ASSEMBLY
+        //the start of the function
+        codegen.DoFuncStart(sto, "%g1");
+
+       
+
+
+
         //handle struct func declaration
         if(isInStruct){ //  check if func is in struct decl
             Scope fun = m_symtab.getCurrScope();
@@ -989,7 +1005,36 @@ class MyParser extends parser
 	void DoFuncDecl_2()
 	{
 
-		m_symtab.closeScope();
+		//WRITE ASSEMBLY:
+        // the end of the function
+        FuncSTO fun = m_symtab.getFunc();
+        fun.setBase("92");
+        
+        Vector<STO> s = m_symtab.getCurrScope().getLocals();
+        int offset = 0;
+        if(!s.isEmpty()) {
+           for(int i = 0; i < s.size(); i++) {
+              if(s.get(i).getType() instanceof ArrayType) {
+                 offset = offset + ((ArrayType)s.get(i).getType()).getTotalSize();
+              }
+              else {
+                  offset += s.get(i).getType().getSize();
+              }
+           }
+
+           fun.setOffset("+ " +Integer.toString(offset));
+        }
+        else {
+            fun.setOffset("+ 0");
+        }
+
+
+        codegen.DoFuncEnd(fun);
+
+        m_symtab.closeScope();
+
+
+
 		m_symtab.setFunc(null);
 	}
 
@@ -2678,9 +2723,14 @@ class MyParser extends parser
 
 
     //------------------------------------------------------------------------
-    //test
+    //cout for assembly 
     //-----------------------------------------------------------------------
-
+    void DoPrint(Vector<STO> printlist){
+        for(int i = 0; i < printlist.size(); i++){
+            codegen.printConst(printlist.get(i));
+        }
+    
+    }
 
 
 
