@@ -17,6 +17,7 @@ abstract class STO
     private boolean oTag = false;
     private String offset;
     private String base;
+    private int value;
 
 
 	//----------------------------------------------------------------
@@ -145,6 +146,14 @@ abstract class STO
 
     public void setOTag(boolean b) {
       thisTag = b;
+    }
+
+    public int getVal(){
+        return value;
+    }
+
+    public void setVal(int i){
+        value = i;
     }
 
     

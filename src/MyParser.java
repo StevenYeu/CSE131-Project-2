@@ -584,11 +584,10 @@ class MyParser extends parser
                 if(expr == null) {
                     
               	    sto = new VarSTO(id,t);
+
                     //assembly for uninit global var decl
-
-            
-
-                    if(m_symtab.getLevel() == 0 ||  (optstatic != null)){
+                    //global scope is always 1
+                    if(m_symtab.getLevel() == 1 ||  (optstatic != null)){
                         sto.setBase("%g0");
                         sto.setOffset(id);
                         codegen.DoGlobalVarDecl(sto);
@@ -602,7 +601,33 @@ class MyParser extends parser
                     m_errors.print(Formatter.toString(ErrorMsg.error8_Assign, expr.getType().getName(),t.getName()));
                     return;
                 }
+
                 sto = new VarSTO(id,t);
+
+
+                //assembly for init global/static var decl
+                Type typ = expr.getType();
+                if(m_symtab.getLevel() == 1 || (optstatic != null)){
+                    if(expr instanceof ConstSTO){
+                        ConstSTO exp = (ConstSTO)expr;
+                        int i;
+                        if(typ instanceof BoolType){
+                            i = exp.getBoolValue() ? 1 : 0;
+                            String str = String.valueOf(i);
+                            codegen.DoGlobalVarInitLit(sto, str);
+                        }
+                        else if(typ instanceof IntType){
+                            i = exp.getIntValue();
+                            String str = String.valueOf(i);
+                            codegen.DoGlobalVarInitLit(sto, str);
+                        }
+                        else if(typ instanceof FloatType){
+                            float f = exp.getFloatValue();
+                            String str = String.valueOf(f);
+                            codegen.DoGlobalVarInitLit(sto, str);
+                        }
+                    }
+                }
                 
                 sto.setIsAddressable(true);
                 sto.setIsModifiable(true);
@@ -693,7 +718,7 @@ class MyParser extends parser
 	//----------------------------------------------------------------
 	//
 	//----------------------------------------------------------------
-	void DoConstDecl2(String id, Type t, STO constexpr)
+	void DoConstDecl2(String optstatic, String id, Type t, STO constexpr)
 	{
         if(constexpr instanceof ErrorSTO){
             return;
@@ -738,6 +763,29 @@ class MyParser extends parser
             sto.setIsModifiable(false);
             sto.setIsAddressable(true);
             
+                //assembly for init global/static var decl
+                Type typ = constexpr.getType();
+                if(m_symtab.getLevel() == 1 || (optstatic != null)){
+                    if(constexpr instanceof ConstSTO){
+                        ConstSTO exp = (ConstSTO)constexpr;
+                        int i;
+                        if(typ instanceof BoolType){
+                            i = exp.getBoolValue() ? 1 : 0;
+                            String str = String.valueOf(i);
+                            codegen.DoGlobalVarInitLit(sto, str);
+                        }
+                        else if(typ instanceof IntType){
+                            i = exp.getIntValue();
+                            String str = String.valueOf(i);
+                            codegen.DoGlobalVarInitLit(sto, str);
+                        }
+                        else if(typ instanceof FloatType){
+                            float f = exp.getFloatValue();
+                            String str = String.valueOf(f);
+                            codegen.DoGlobalVarInitLit(sto, str);
+                        }
+                    }
+                }
 
            	m_symtab.insert(sto);
         }
@@ -2727,7 +2775,41 @@ class MyParser extends parser
     //-----------------------------------------------------------------------
     void DoPrint(Vector<STO> printlist){
         for(int i = 0; i < printlist.size(); i++){
-            codegen.printConst(printlist.get(i));
+            
+            STO sto = printlist.get(i);
+            Type t = sto.getType();
+
+
+            //check for endl
+            if(sto instanceof ExprSTO){
+                if(sto.getName().equals("endl")){
+                    codegen.printNL("%o0");
+                    break;
+                }
+            }
+
+            else if(sto instanceof ConstSTO){
+            // const string printing
+                if(!(t instanceof BasicType)){
+                    codegen.printConstStr(sto, "%o1");
+                }
+                else if(t instanceof FloatType){
+                    codegen.printConstFloat(sto, "%l7");
+                }
+                else if(t instanceof IntType){
+                    codegen.printConstInt(sto, "%o1");
+                }
+                else{
+                    codegen.printConstBool(sto,"%o0");
+                }
+            }
+            else{
+                codegen.printVar(sto, "%l7");
+            }
+
+
+
+            //codegen.printConst(printlist.get(i));
         }
     
     }

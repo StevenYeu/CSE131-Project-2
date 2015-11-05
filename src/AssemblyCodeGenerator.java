@@ -76,11 +76,6 @@ import java.util.Date;
  *     String.format method which takes a printf like format string followed
  *     by an array of Objects which are the parameters to the format string.
  *     
- * 12) Main is just a small demo that will create a tiny assembly file in the
- *     current directory called "rc.s".  This file doesn't compile and is
- *     not meant to.
- * 
- * @author Evan Worley
  */
 
 public class AssemblyCodeGenerator {
@@ -139,6 +134,8 @@ public class AssemblyCodeGenerator {
     private static final String GLOBAL = ".global";
     private static final String SKIP = ".skip";
     private static final String LABEL = "%S:";
+    private static final String WORD = ".word";
+    private static final String SINGLE = ".single";
 
     // Func Decl
     //private static final String  
@@ -214,7 +211,7 @@ public class AssemblyCodeGenerator {
         }
     }
     
-    // 12
+    // 12 don't actually used for anything
     public static void main(String args[]) {
         AssemblyCodeGenerator myAsWriter = new AssemblyCodeGenerator("rc.s");
 
@@ -230,6 +227,10 @@ public class AssemblyCodeGenerator {
         myAsWriter.dispose();
     }
 
+
+    // ----------------------------------------------------------------------------------
+    // File header, contains helpers for cout 
+    // ----------------------------------------------------------------------------------
 
 
     public void formatHeader(){
@@ -290,46 +291,6 @@ public class AssemblyCodeGenerator {
 
 
         this.writeAssembly(NEWLINE);    
-        
-
-    }
-
-    // This is for global/static uninit vars decl
-    public void DoGlobalVarDecl(STO sto){
-        this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, SECTION, "\".bss\"");
-        this.decreaseIndent();
-        this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(sto.getType().getSize()));
-        this.decreaseIndent();
-        this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, GLOBAL, sto.getName());
-        this.decreaseIndent();
-        this.writeAssembly(NO_PARAM,sto.getName()+":");
-        this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, SKIP, String.valueOf(sto.getType().getSize())); 
-        this.writeAssembly(NEWLINE);
-        this.decreaseIndent();
-        this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, SECTION, "\".text\"");
-        this.decreaseIndent();
-        this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(sto.getType().getSize()));
-        this.decreaseIndent();
-    
-    
-    }
-
-    public void DoLocalVarDecl(STO sto, String reg){
-    }
-
-    // func decl with no params
-    public void DoFuncStart(STO sto, String reg){
-
-
-        String SAVE = "SAVE." + sto.getName() + "."+ ((FuncSTO)sto).getReturnType().getName();
-
-
         // .section   .text
         this.increaseIndent();
         this.writeAssembly(ONE_PARAM, SECTION, "\".text\"");
@@ -339,6 +300,193 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(4));
         this.decreaseIndent();
+
+        // .$$.printBool:
+        this.writeAssembly(NO_PARAM, DOLLAR + "printBool:");
+        
+        // save %sp, -96, %sp
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, SAVE_OP, "%sp", "-96", "%sp");
+        this.decreaseIndent();
+
+        // set .$$.strTF, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, ".$$.strTF", "%o0");
+        this.decreaseIndent();
+
+        // cmp  %g0, %i0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, CMP_OP,"%g0", "%i0");
+        this.decreaseIndent();
+
+        // be  .$$.printBool2
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, BE_OP, DOLLAR+"printBool2");
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+        // add   %o0, 8, %o0
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP,"%o0", "8", "%o0" );
+        this.decreaseIndent();
+
+
+
+        // .$$.printBool2
+        this.writeAssembly(NO_PARAM, DOLLAR + "printBool2:");
+
+        // call printf
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, PRINT_OP);
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+        // ret
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, RET_OP);
+        this.decreaseIndent();
+
+        // restore
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, RESTORE_OP);
+        this.decreaseIndent();
+        
+
+    }
+
+    /*
+     * The next three methods used for var decl and assignment
+     */
+
+    // ----------------------------------------------------------------------------------
+    // This is for global/static uninit vars decl
+    // ----------------------------------------------------------------------------------
+    public void DoGlobalVarDecl(STO sto){
+
+        this.writeAssembly(NEWLINE);
+
+        // .section .bss
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, SECTION, "\".bss\"");
+        this.decreaseIndent();
+
+        // .align  # (always 4?) 
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(4));
+        this.decreaseIndent();
+
+        // .global varname
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, GLOBAL, sto.getName());
+        this.decreaseIndent();
+
+        // varname:
+        this.writeAssembly(NO_PARAM,sto.getName()+":");
+
+        // .skip # (should anto init var to 0/false
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, SKIP, String.valueOf(sto.getType().getSize())); 
+        this.writeAssembly(NEWLINE);
+        this.decreaseIndent();
+
+        this.writeAssembly(NEWLINE);
+
+        // .section .text
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, SECTION, "\".text\"");
+        this.decreaseIndent();
+
+        // .align #
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(4));
+        this.decreaseIndent();
+    
+    
+    }
+
+
+    // ----------------------------------------------------------------------------------
+    // This is for local var decl
+    // ----------------------------------------------------------------------------------
+
+    public void DoLocalVarDecl(STO sto, String reg){
+    }
+
+    // ----------------------------------------------------------------------------------
+    // This is for global/static init var decl
+    // ----------------------------------------------------------------------------------
+    public void DoGlobalVarInitLit(STO sto, String num){
+        
+        this.writeAssembly(NEWLINE);
+        
+        // .section .bss
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, SECTION, "\".data\"");
+        this.decreaseIndent();
+
+        // .align  # (always 4?) 
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(4));
+        this.decreaseIndent();
+
+        // .global varname
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, GLOBAL, sto.getName());
+        this.decreaseIndent();
+
+        // varname:
+        this.writeAssembly(NO_PARAM,sto.getName()+":");
+
+        this.increaseIndent();
+        if(sto.getType() instanceof FloatType){
+            // .single #
+            this.writeAssembly(ONE_PARAM, SINGLE, "0r"+num);
+        }
+        else{
+            // .word  #
+            this.writeAssembly(ONE_PARAM, WORD, num);
+        }
+        this.writeAssembly(NEWLINE);
+        this.decreaseIndent();
+
+        this.writeAssembly(NEWLINE);
+
+        // .section .text
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, SECTION, "\".text\"");
+        this.decreaseIndent();
+
+        // .align #
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(4));
+        this.decreaseIndent();
+
+    }
+
+
+
+    /*
+     * The next two methods handles func decl
+     */
+        
+    // ----------------------------------------------------------------------------------
+    // func decl with no params (first half before the body) 
+    // ----------------------------------------------------------------------------------
+
+    public void DoFuncStart(STO sto, String reg){
+
+
+        String SAVE = "SAVE." + sto.getName() + "."+ ((FuncSTO)sto).getReturnType().getName();
+
+        this.writeAssembly(NEWLINE);
 
         // .global  func_name
         this.increaseIndent();
@@ -371,9 +519,17 @@ public class AssemblyCodeGenerator {
         
     }
     
+
+    // ----------------------------------------------------------------------------------
+    // func decl with no params (second half after the body
+    // ----------------------------------------------------------------------------------
+
     public void DoFuncEnd(STO sto){
+
+        
         String SAVE = "SAVE." + sto.getName() + "."+ ((FuncSTO)sto).getReturnType().getName();
 
+        // ! comment
         this.increaseIndent();
         this.writeAssembly(NO_PARAM, "! End of function " + SAVE);
         this.decreaseIndent();
@@ -398,12 +554,12 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(NO_PARAM, RESTORE_OP);
         this.decreaseIndent();
 
+        // SAVE,funcname.type = -(base + offset) & -8
         this.increaseIndent();
-        this.writeAssembly(NO_PARAM, SAVE + "= -(" +sto.getAddress() + ") & -8");
+        this.writeAssembly(NO_PARAM, SAVE + " = -(" +sto.getAddress() + ") & -8");
         this.decreaseIndent();
 
         //funcname.type.fini
-        
         this.writeAssembly(NO_PARAM, sto.getName() + "." + ((FuncSTO)sto).getReturnType().getName() + ".fini:");
         
         //save   %sp, -96, %sp
@@ -424,228 +580,303 @@ public class AssemblyCodeGenerator {
         
     }
 
-    public void FuncHeader(STO sto){
- 
-        // .$$.printBool:
-        this.writeAssembly(NO_PARAM, DOLLAR + "printBool:");
+    /*
+     * The next Eight methods handle cout
+     */
+
+    // ----------------------------------------------------------------------------------
+    // This is for const String cout
+    // ----------------------------------------------------------------------------------
+    public void printConstStr(STO sto, String reg){
+
+        this.writeAssembly(NEWLINE);
+    
+        //.section ".rodata" 
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, SECTION, "\".rodata\"");
+        this.decreaseIndent();
+
+        // .align 4
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, ALIGN, "4");
+        this.decreaseIndent();
+
+        // .$$.str.#:
+        constStrCnt++;
+        this.writeAssembly(NO_PARAM, DOLLAR + "str." + Integer.toString(constStrCnt) + ":");
+
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, AZ, "\"" + sto.getName() + "\"" );
+        this.decreaseIndent();
+        // end of .rodata
         
-        // save %sp, -96, %sp
+        this.writeAssembly(NEWLINE);
+
+        // .section ".text"
         this.increaseIndent();
-        this.writeAssembly(THREE_PARAM, SAVE_OP, "%sp", "-96", "%sp");
+        this.writeAssembly(ONE_PARAM, SECTION, "\".text\"" );
         this.decreaseIndent();
 
-        // set .$$.strTF, %o0
+        // .align 4
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, SET_OP, ".$$.strTF", "%o0");
+        this.writeAssembly(ONE_PARAM, ALIGN, "4" );
         this.decreaseIndent();
 
-        // cmp  %g0, %i0
+        // !comment
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, CMP_OP,"%g0", "%i0");
+        this.writeAssembly(NO_PARAM, "! cout << \"" +sto.getName() +"\"" );
         this.decreaseIndent();
 
-        // be  .$$.printBool2
+        //set .$$.strFmt, %o0
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, SECTION, DOLLAR+"printBool2");
+        this.writeAssembly(TWO_PARAM, SET_OP, DOLLAR + "strFmt", "%o0" );
         this.decreaseIndent();
 
-        // nop
+        //set .$$.str.#, %o1
         this.increaseIndent();
-        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.writeAssembly(TWO_PARAM, SET_OP, DOLLAR + "str." + Integer.toString(constStrCnt), reg );
         this.decreaseIndent();
 
-        // add   %o0, 8, %o0
-        this.increaseIndent();
-        this.writeAssembly(THREE_PARAM, ADD_OP,"%o0", "8", "%o0" );
-        this.decreaseIndent();
-
-        // .$$.printBool2
-        this.writeAssembly(NO_PARAM, SECTION, DOLLAR + "printBool2");
-
-        // call printf
+        //call printf
         this.increaseIndent();
         this.writeAssembly(ONE_PARAM, CALL_OP, PRINT_OP);
         this.decreaseIndent();
+            
+        //nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+
+    }
+    // ----------------------------------------------------------------------------------
+    // This is for const Float cout
+    // ----------------------------------------------------------------------------------
+    public void printConstFloat(STO sto, String reg){
+          
+        this.writeAssembly(NEWLINE);
+
+        //.section ".rodata" 
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, SECTION, "\".rodata\"");
+        this.decreaseIndent();
+
+        // .align 4
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, ALIGN, "4");
+        this.decreaseIndent();
+
+        // .$$.float.1
+        constFloatCnt++;
+        this.writeAssembly(NO_PARAM, DOLLAR + "float." + Integer.toString(constFloatCnt) + ":");
+
+        // .single 0r#
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, SINGLE, "0r" + String.valueOf(((ConstSTO)sto).getFloatValue()) );
+        this.decreaseIndent();
+
+        // .section ".text"
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, SECTION, "\".text\"" );
+        this.decreaseIndent();
+
+        // .align 4
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, ALIGN, "4" );
+        this.decreaseIndent();
+
+        // !comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! cout << \"" +sto.getName() +"\"" );
+        this.decreaseIndent();
+
+        //set .$$.Float.#, %l7
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, DOLLAR + "float." + Integer.toString(constFloatCnt) , reg );
+        this.decreaseIndent();
+
+        //ld [%l7], %f0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%f0");
+        this.decreaseIndent();
+
+        //call printFloat
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, "printFloat");
+        this.decreaseIndent();
+            
+        //nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+    }
+    // ----------------------------------------------------------------------------------
+    // This is for const Int cout
+    // ----------------------------------------------------------------------------------
+    public void printConstInt(STO sto, String reg){
+
+        int num = ((ConstSTO)sto).getIntValue();
+          
+        this.writeAssembly(NEWLINE);
+
+
+        // !comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! cout << \"" +num +"\"" );
+        this.decreaseIndent();
+
+        //set, #, %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(num) , reg );
+        this.decreaseIndent();
+
+        //set .$$.intFmt, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, DOLLAR + "intFmt", "%o0");
+        this.decreaseIndent();
+
+        //call printf
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, PRINT_OP);
+        this.decreaseIndent();
+            
+        //nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+    }
+    // ----------------------------------------------------------------------------------
+    // This is for const Bool cout
+    // ----------------------------------------------------------------------------------
+    public void printConstBool(STO sto, String reg){
+
+        Boolean b = ((ConstSTO)sto).getBoolValue();
+        int num = b ? 1 : 0;
+
+        this.writeAssembly(NEWLINE);
+
+
+        // !comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! cout << \"" +b +"\"" );
+        this.decreaseIndent();
+
+        //set, #, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(num) , reg );
+        this.decreaseIndent();
+
+        //call .$$.printBool
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, DOLLAR + "printBool");
+        this.decreaseIndent();
+            
+        //nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+
+    }       
+
+
+    // --------------------------------------------------------------------
+    // handles endl for print
+    // --------------------------------------------------------------------
+    public void printNL(String reg){
+
+        // !comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! cout << \" endl \"" );
+        this.decreaseIndent();
+
+        // set .$$.strEndl, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, DOLLAR+"strEndl", reg);
+        this.decreaseIndent();
+
+        // call printf
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, PRINT_OP );
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+    }
+
+    // --------------------------------------------------------------------
+    // handles all var for cout
+    // --------------------------------------------------------------------
+
+    public void printVar(STO sto, String reg){
+
+        Type t = sto.getType();
+
+        this.writeAssembly(NEWLINE);
+
+        // !comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! cout << \"" + sto.getName() + "\"" );
+        this.decreaseIndent(); 
+
+        // set varname, %l7
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, sto.getName(), reg);
+        this.decreaseIndent();
+
+        // add %g0, %l7, %l7
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, "%g0", reg, reg);
+        this.decreaseIndent(); 
+
+
+        this.increaseIndent();
+        if(t instanceof BoolType){
+            // ld [%l7], %o0
+            this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", "%o0");
+            this.decreaseIndent();
+
+            // call .$$.printBool
+            this.increaseIndent();
+            this.writeAssembly(ONE_PARAM, CALL_OP, DOLLAR+"printBool");
+        }
+        else if( t instanceof IntType){
+            // ld [%l7], %o1
+            this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", "%o1");
+            this.decreaseIndent();
+
+            // set .$$.intFmt, %o0
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, SET_OP, DOLLAR+"intFmt", "%o0");
+            this.decreaseIndent();
+            this.increaseIndent();
+            // call printf
+            this.writeAssembly(ONE_PARAM, CALL_OP, PRINT_OP);
+        }
+        else if( t instanceof FloatType){
+            // ld [%l7], %f0
+            this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", "%f0");
+            this.decreaseIndent();
+
+            // call printFloat
+            this.increaseIndent();
+            this.writeAssembly(ONE_PARAM, CALL_OP, "printFloat" );
+
+        }
+        this.decreaseIndent();
 
         // nop
         this.increaseIndent();
         this.writeAssembly(NO_PARAM, NOP_OP);
         this.decreaseIndent();
 
-        // ret
-        this.increaseIndent();
-        this.writeAssembly(NO_PARAM, RET_OP);
-        this.decreaseIndent();
-
-        // restore
-        this.increaseIndent();
-        this.writeAssembly(NO_PARAM, RESTORE_OP);
-        this.decreaseIndent();
-
-
-
-
-    }
-
-    public void printConst(STO sto){
     
-        Type typ = sto.getType();
-
-        if(sto instanceof ExprSTO){
-            if(sto.getName().equals("endl")){
-                this.printNL();
-                return;
-            }
-            //return;
-        }
-        
-        if(!(typ instanceof BasicType)){
-        
-            //.section ".rodata" 
-            this.increaseIndent();
-            this.writeAssembly(ONE_PARAM, SECTION, "\".rodata\"");
-            this.decreaseIndent();
-
-            // .align 4
-            this.increaseIndent();
-            this.writeAssembly(ONE_PARAM, ALIGN, "4");
-            this.decreaseIndent();
-
-            // .$$.str.#:
-            constStrCnt++;
-            this.writeAssembly(NO_PARAM, DOLLAR + "str." + Integer.toString(constStrCnt) + ":");
-
-            this.increaseIndent();
-            this.writeAssembly(ONE_PARAM, AZ, "\"" + sto.getName() + "\"" );
-            this.decreaseIndent();
-            // end of .rodata
-        
-            this.writeAssembly(NEWLINE);
-
-            // .section ".text"
-            this.increaseIndent();
-            this.writeAssembly(ONE_PARAM, SECTION, "\".text\"" );
-            this.decreaseIndent();
-
-            // .align 4
-            this.increaseIndent();
-            this.writeAssembly(ONE_PARAM, ALIGN, "4" );
-            this.decreaseIndent();
-
-            // !comment
-            this.increaseIndent();
-            this.writeAssembly(NO_PARAM, "! cout << \"" +sto.getName() +"\"" );
-            this.decreaseIndent();
-
-            //set .$$.strFmt, %o0
-            this.increaseIndent();
-            this.writeAssembly(TWO_PARAM, SET_OP, DOLLAR + "strFmt", "%o0" );
-            this.decreaseIndent();
-
-            //set .$$.str.#, %o1
-            this.increaseIndent();
-            this.writeAssembly(TWO_PARAM, SET_OP, DOLLAR + "str." + Integer.toString(constStrCnt), "%o1" );
-            this.decreaseIndent();
-
-            //call printf
-            this.increaseIndent();
-            this.writeAssembly(ONE_PARAM, CALL_OP, PRINT_OP);
-            this.decreaseIndent();
-            
-            //nop
-            this.increaseIndent();
-            this.writeAssembly(NO_PARAM, NOP_OP);
-            this.decreaseIndent();
-
-
-        }
-        else if(typ instanceof FloatType){
-          
-            this.writeAssembly(NEWLINE);
-
-            //.section ".rodata" 
-            this.increaseIndent();
-            this.writeAssembly(ONE_PARAM, SECTION, "\".rodata\"");
-            this.decreaseIndent();
-
-            // .align 4
-            this.increaseIndent();
-            this.writeAssembly(ONE_PARAM, ALIGN, "4");
-            this.decreaseIndent();
-
-            // .$$.float.1
-            constFloatCnt++;
-            this.writeAssembly(NO_PARAM, DOLLAR + "float." + Integer.toString(constFloatCnt) + ":");
-
-            // .single 0r#
-            this.increaseIndent();
-            this.writeAssembly(ONE_PARAM, ".single", "0r" + String.valueOf(((ConstSTO)sto).getFloatValue()) );
-            this.decreaseIndent();
-
-            // .section ".text"
-            this.increaseIndent();
-            this.writeAssembly(ONE_PARAM, SECTION, "\".text\"" );
-            this.decreaseIndent();
-
-            // .align 4
-            this.increaseIndent();
-            this.writeAssembly(ONE_PARAM, ALIGN, "4" );
-            this.decreaseIndent();
-
-            // !comment
-            this.increaseIndent();
-            this.writeAssembly(NO_PARAM, "! cout << \"" +sto.getName() +"\"" );
-            this.decreaseIndent();
-
-            //set .$$.Float.#, %o0
-            this.increaseIndent();
-            this.writeAssembly(TWO_PARAM, SET_OP, DOLLAR + "float." + Integer.toString(constFloatCnt) , "%l7" );
-            this.decreaseIndent();
-
-            //ld [%l7], %f0
-            this.increaseIndent();
-            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%f0");
-            this.decreaseIndent();
-
-            //call printFloat
-            this.increaseIndent();
-            this.writeAssembly(ONE_PARAM, CALL_OP, "printFloat");
-            this.decreaseIndent();
-            
-            //nop
-            this.increaseIndent();
-            this.writeAssembly(NO_PARAM, NOP_OP);
-            this.decreaseIndent();
-
-        }
-        else if(typ instanceof BoolType){
-        }
-        else{
-
-        }
-
-
     
     }
-
-    public void printNL(){
-
-            // !comment
-            this.increaseIndent();
-            this.writeAssembly(NO_PARAM, "! cout << \" endl \"" );
-            this.decreaseIndent();
-
-            this.increaseIndent();
-            this.writeAssembly(TWO_PARAM, SET_OP, DOLLAR+"strEndl", "%o0");
-            this.decreaseIndent();
-            this.increaseIndent();
-            this.writeAssembly(ONE_PARAM, CALL_OP, PRINT_OP );
-            this.decreaseIndent();
-            this.increaseIndent();
-            this.writeAssembly(NO_PARAM, NOP_OP);
-            this.decreaseIndent();
-    }
-
     
 
 
