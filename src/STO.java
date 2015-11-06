@@ -46,8 +46,16 @@ abstract class STO
          offset = o;
     }
 
+    public String getBase(){
+        return base;
+    }
+
     public void setBase(String b){
         base = b;
+    }
+
+    public String getOffset(){
+        return offset;
     }
 
     

@@ -248,11 +248,12 @@ ExternDecl ::=      T_EXTERN DecoratedBasicType:_2 T_ID:_3 OptArrayList:_4
 VarDecl ::=         OptStatic:_1 DecoratedType:_2 T_ID:_3 OptArrayList:_4 OptInit:_5
                     {:
                         ((MyParser) parser).DoVarDecl2 (((String)_1),_3,_2,_4,((STO)_5)); //Done
+
                     :}
                     T_SEMI
     |               OptStatic:_1 T_AUTO T_ID:_3 T_ASSIGN Expr:_5 
                     {:
-                        ((MyParser) parser).DoVarDecl (_3, _5.getType()); // changed again
+                        ((MyParser) parser).DoVarDecl ((String)_1,_3,_5); // changed again
                     :}
                     T_SEMI
     |               OptStatic:_1 StructType:_2 T_ID:_3 OptArrayList:_4 OptCtorCall:_5
@@ -814,9 +815,10 @@ ExprList ::=        Expr:_1
 
 Expr ::=            Designator:_1 T_ASSIGN Expr:_2
                     {:
-                        
+                        // we add this, not given
+                        ((MyParser) parser).SaveLineNum(); 
                         RESULT = ((MyParser) parser).DoAssignTypeCheck(_1,_2);
-                        //RESULT = ((MyParser) parser).DoAssignExpr (RESULT);
+                        
                        
                     :}
     |               Expr0:_1
