@@ -696,12 +696,12 @@ public class AssemblyCodeGenerator {
     // This is assignment for const Int and Bool 
     // ---------------------------------------------------------------
     public void DoConstAssign(STO a, String b){
-        // set   var name, %o1
+        // set   offset, %o1
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, SET_OP, a.getOffset(), "%o1" );
         this.decreaseIndent();
 
-        // add   %g0, %o1, %o1
+        // add   base, %o1, %o1
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, a.getBase(), "%o1", "%o1");
         this.decreaseIndent();
