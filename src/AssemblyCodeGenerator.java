@@ -602,7 +602,7 @@ public class AssemblyCodeGenerator {
 
         // add    %g0, %l7, %l7  
         this.increaseIndent();
-        this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%l7", "%l7");
+        this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(), "%l7", "%l7");
         this.decreaseIndent();
 
 
@@ -1417,7 +1417,7 @@ public class AssemblyCodeGenerator {
 
         // mov %o0, %o0  (but why?)
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, "%o0", "%o0");
+        this.writeAssembly(TWO_PARAM, MOV_OP, "%o0", "%o0");
         this.decreaseIndent();   
 
     }

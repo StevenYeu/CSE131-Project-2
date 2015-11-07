@@ -1263,6 +1263,7 @@ class MyParser extends parser
 
         //WRITE ASSEMBLY
         //the start of the function
+
         codegen.DoFuncStart(sto, "%g1");
 
        
@@ -1304,7 +1305,7 @@ class MyParser extends parser
         // the end of the function
         FuncSTO fun = m_symtab.getFunc();
         fun.setBase("92");
-        
+        /*
         Vector<STO> s = m_symtab.getCurrScope().getLocals();
         int offset = 0;
         if(!s.isEmpty()) {
@@ -1322,8 +1323,14 @@ class MyParser extends parser
         else {
             fun.setOffset("+ 0");
         }
+        */
 
+        int val = offsetCnt * 4;
+        fun.setOffset(" + " + String.valueOf(val));
 
+        fun.setBase("92");
+
+        
         codegen.DoFuncEnd(fun);
 
         m_symtab.closeScope();
@@ -2250,7 +2257,7 @@ class MyParser extends parser
         result.setIsAddressable(false);
 
         //Assembly writing: Cover all binary arithmetric for int  check: 1.4
-        result.setOffset("%fp");
+        result.setBase("%fp");
         offsetCnt++;
         int val = -offsetCnt * result.getType().getSize();
         String value = String.valueOf(val);
