@@ -204,8 +204,13 @@ class MyParser extends parser
             sto.setIsModifiable(false);
         }
         //assembly for init global/static var decl
-    
+        //should be the same as init for general global/static init
         if(m_symtab.getLevel() == 1 || (optstatic != null)){
+            // set base and offset
+            sto.setBase("%g0");
+            sto.setOffset(id);
+
+            // const init
             if(expr instanceof ConstSTO){
                 ConstSTO exp = (ConstSTO)expr;
                 int i;
@@ -225,6 +230,50 @@ class MyParser extends parser
                     codegen.DoGlobalVarInitLit(sto, str);
                 }
             }
+            //var init
+            else{
+                codegen.DoGlobalVarInitVar(sto, expr);
+            }
+        }
+        // local init
+        else{
+            //set base and offset
+            sto.setBase("%fp");
+            offsetCnt++;
+            int val = -offsetCnt * t.getSize();
+            String value = String.valueOf(val);
+            sto.setOffset(value);
+
+            // const init
+            if(expr instanceof ConstSTO){
+                ConstSTO exp = (ConstSTO)expr;
+                Type typ = exp.getType();
+                int i;
+
+                if(typ instanceof FloatType){
+                    codegen.DoFloatAssign(sto, expr);
+                }
+                else if(typ instanceof IntType){
+                    i = exp.getIntValue();
+                    String str = String.valueOf(i);
+                    codegen.DoConstAssign(sto, str, exp.getName());
+                }
+                else if(typ instanceof BoolType){
+                    i = exp.getBoolValue() ? 1 : 0;
+                    String str = String.valueOf(i);
+                    codegen.DoConstAssign(sto, str, exp.getName());
+
+                }
+                // to be implement array, struct etc
+
+            }
+            //var init
+            else{
+                codegen.DoVarAssign(sto, expr);
+
+            }
+
+
         }
 
   		m_symtab.insert(sto);
@@ -698,12 +747,12 @@ class MyParser extends parser
                         else if(typ instanceof IntType){
                             i = exp.getIntValue();
                             String str = String.valueOf(i);
-                            codegen.DoConstAssign(sto, str);
+                            codegen.DoConstAssign(sto, str, exp.getName());
                         }
                         else if(typ instanceof BoolType){
                             i = exp.getBoolValue() ? 1 : 0;
                             String str = String.valueOf(i);
-                            codegen.DoConstAssign(sto, str);
+                            codegen.DoConstAssign(sto, str, exp.getName());
 
                         }
                         // to be implement array, struct etc
@@ -850,29 +899,71 @@ class MyParser extends parser
             sto.setIsModifiable(false);
             sto.setIsAddressable(true);
             
-                //assembly for init global/static var decl
-                Type typ = constexpr.getType();
-                if(m_symtab.getLevel() == 1 || (optstatic != null)){
-                    if(constexpr instanceof ConstSTO){
-                        ConstSTO exp = (ConstSTO)constexpr;
-                        int i;
-                        if(typ instanceof BoolType){
-                            i = exp.getBoolValue() ? 1 : 0;
-                            String str = String.valueOf(i);
-                            codegen.DoGlobalVarInitLit(sto, str);
-                        }
-                        else if(typ instanceof IntType){
-                            i = exp.getIntValue();
-                            String str = String.valueOf(i);
-                            codegen.DoGlobalVarInitLit(sto, str);
-                        }
-                        else if(typ instanceof FloatType){
-                            float f = exp.getFloatValue();
-                            String str = String.valueOf(f);
-                            codegen.DoGlobalVarInitLit(sto, str);
-                        }
+            //tag it here to make a var
+            sto.setLitTag(true);
+
+            //assembly for init global/static var decl
+            if(m_symtab.getLevel() == 1 || (optstatic != null)){
+                
+                //set offset and base
+                sto.setOffset(id);
+                sto.setBase("%g0");
+                    
+                ConstSTO exp = (ConstSTO)constexpr;
+                int i;
+                if(t instanceof BoolType){
+                    i = exp.getBoolValue() ? 1 : 0;
+                    String str = String.valueOf(i);
+                    codegen.DoGlobalVarInitLit(sto, str);
+                }
+                else if(t instanceof IntType){
+                    i = exp.getIntValue();
+                    String str = String.valueOf(i);
+                    codegen.DoGlobalVarInitLit(sto, str);
+                }
+                else if(t instanceof FloatType){
+                    float f = exp.getFloatValue();
+                    String str = String.valueOf(f);
+                    codegen.DoGlobalVarInitLit(sto, str);
+                }
+                    
+            }
+            else{
+
+                // set base and offset
+                sto.setBase("%fp");
+                    
+                offsetCnt++;
+                int val = -offsetCnt * t.getSize();
+                String value = String.valueOf(val);
+                sto.setOffset(value);
+                    
+                ConstSTO exp = (ConstSTO)constexpr;
+                int i;
+
+                if(t instanceof FloatType){
+                    if(exp.getLitTag()){
+                        codegen.DoFloatAssign(sto, constexpr);
+                    }
+                    else{
+                        codegen.DoFloatAssign(sto, constexpr);
                     }
                 }
+                else if(t instanceof IntType){
+                    i = exp.getIntValue();
+                    String str = String.valueOf(i);
+                    codegen.DoConstAssign(sto, str, exp.getName());
+                }
+                else if(t instanceof BoolType){
+                    i = exp.getBoolValue() ? 1 : 0;
+                    String str = String.valueOf(i);
+                    codegen.DoConstAssign(sto, str, exp.getName());
+
+                }
+                // to be implement array, struct etc  
+
+            }
+
 
            	m_symtab.insert(sto);
         }
@@ -880,9 +971,9 @@ class MyParser extends parser
 
 
     // auto for const decl
-    void DoAutoDecl(String id, STO expr)
+    void DoAutoDecl(String optstatic, String id, STO expr)
 	{
-        if(expr instanceof ErrorSTO)
+        if(!(expr instanceof ConstSTO))
             return;
 
 		if (m_symtab.accessLocal(id) != null)
@@ -893,10 +984,10 @@ class MyParser extends parser
        		
 		ConstSTO sto;
         if (expr.getType() instanceof IntType) {
-            sto = new ConstSTO(id, expr.getType(), Integer.parseInt(expr.getName()));   // fix me Done
+            sto = new ConstSTO(id, expr.getType(), ((ConstSTO)expr).getIntValue());   // fix me Done
         }
         else if (expr.getType() instanceof FloatType) {
-            sto = new ConstSTO(id, expr.getType(), Float.parseFloat(expr.getName()));   // fix me Done
+            sto = new ConstSTO(id, expr.getType(), ((ConstSTO)expr).getFloatValue());   // fix me Done
         }
         else {
             if(((ConstSTO)expr).getBoolValue())
@@ -907,6 +998,72 @@ class MyParser extends parser
 
         sto.setIsModifiable(false);
         sto.setIsAddressable(true);
+
+        //tag it here to make a var
+       sto.setLitTag(true);
+
+       ConstSTO exp = (ConstSTO)expr;
+       Type t = sto.getType();
+
+       //assembly for init global/static var decl
+       if(m_symtab.getLevel() == 1 || (optstatic != null)){
+                
+           //set offset and base
+           sto.setOffset(id);
+           sto.setBase("%g0");
+                    
+           int i;
+           if(t instanceof BoolType){
+               i = exp.getBoolValue() ? 1 : 0;
+               String str = String.valueOf(i);
+               codegen.DoGlobalVarInitLit(sto, str);
+           }
+           else if(t instanceof IntType){
+               i = exp.getIntValue();
+               String str = String.valueOf(i);
+               codegen.DoGlobalVarInitLit(sto, str);
+           }
+           else if(t instanceof FloatType){
+               float f = exp.getFloatValue();
+               String str = String.valueOf(f);
+               codegen.DoGlobalVarInitLit(sto, str);
+           }
+                    
+       }
+       else{
+
+           // set base and offset
+           sto.setBase("%fp");
+                    
+           offsetCnt++;
+           int val = -offsetCnt * t.getSize();
+           String value = String.valueOf(val);
+           sto.setOffset(value);
+                    
+           int i;
+
+           if(t instanceof FloatType){
+               if(exp.getLitTag()){
+                   codegen.DoVarAssign(sto, expr);
+               }
+               else{
+                   codegen.DoFloatAssign(sto, expr);
+               }
+           }
+           else if(t instanceof IntType){
+               i = exp.getIntValue();
+               String str = String.valueOf(i);
+               codegen.DoConstAssign(sto, str, exp.getName());
+           }
+           else if(t instanceof BoolType){
+               i = exp.getBoolValue() ? 1 : 0;
+               String str = String.valueOf(i);
+               codegen.DoConstAssign(sto, str, exp.getName());
+
+           }
+           // to be implement array, struct etc  
+
+        }
 
 		m_symtab.insert(sto);
 	}
@@ -1338,25 +1495,26 @@ class MyParser extends parser
         }
 
 
-        // Assembly code for var assignment in general
+        // Assembly code for var assignment
         if(b instanceof ConstSTO){
+            System.out.println("Should not print");
             if(a.getType() instanceof FloatType){
                 codegen.DoFloatAssign(a, b);
             }
             else if(a.getType() instanceof IntType){
                 int val = ((ConstSTO)b).getIntValue();
                 String s = String.valueOf(val);
-                codegen.DoConstAssign(a, s);
+                codegen.DoConstAssign(a, s, b.getName());
             }
             else{
                 int val = ((ConstSTO)b).getBoolValue() ? 1 : 0;
                 String s = String.valueOf(val);
-                codegen.DoConstAssign(a, s);
+                codegen.DoConstAssign(a, s, b.getName());
             }
         }
         else{
-            if(m_symtab.getLevel() == 1){
-            if(this.GetSavedLineNum() != this.GetLineNum()){
+            //if(m_symtab.getLevel() == 1){
+            if(this.GetSavedLineNum() != this.GetLineNum() || m_symtab.getLevel() != 1){
                 codegen.DoVarAssign(a, b);
             }
             else{
@@ -1366,10 +1524,10 @@ class MyParser extends parser
                 codegen.assignA.addElement(a);
                 codegen.assignB.addElement(b);
             }
-            }
-            else{
-                codegen.DoVarAssign(a, b);
-            }
+            //}
+            //else{
+            //    codegen.DoVarAssign(a, b);
+            //}
         }
 
 
@@ -2091,6 +2249,17 @@ class MyParser extends parser
         result.setIsModifiable(false);
         result.setIsAddressable(false);
 
+        //Assembly writing: Cover all binary arithmetric for int  check: 1.4
+        result.setOffset("%fp");
+        offsetCnt++;
+        int val = -offsetCnt * result.getType().getSize();
+        String value = String.valueOf(val);
+        result.setOffset(value);
+        if(result.getType() instanceof IntType){
+            codegen.DoBinaryInt(a, b, o.getOp(), result);
+        }
+
+
         return result;
     }
 
@@ -2427,11 +2596,15 @@ class MyParser extends parser
             return new ErrorSTO("error check 7");
         }
         else {
-            if(expr instanceof ConstSTO){
-                codegen.DoExitConst(expr);
+
+            // Assembly writing : the lit case
+            if(expr instanceof ConstSTO && !((ConstSTO)expr).getLitTag()){
+                codegen.DoExitLit(expr);
             }
+            // General case
             else{
-                // To be implemented: codegen.doExitExpr(expr);
+
+                codegen.DoExitBase(expr);
             }
             return expr;
         }
@@ -2907,9 +3080,12 @@ class MyParser extends parser
                     codegen.printNL("%o0");
                     break;
                 }
+                else{
+                    codegen.printVar(sto, "%l7");
+                }
             }
 
-            else if(sto instanceof ConstSTO){
+            else if(sto instanceof ConstSTO && !((ConstSTO)sto).getLitTag()){
             // const string printing
                 if(!(t instanceof BasicType)){
                     codegen.printConstStr(sto, "%o1");

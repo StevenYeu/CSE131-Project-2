@@ -22,10 +22,11 @@ class AddOp extends ArithmetricOp {
         else if((typeA instanceof IntType) && (typeB instanceof IntType)){
             if(a instanceof ConstSTO && b instanceof ConstSTO) {
                 int result = ((ConstSTO)a).getIntValue() + ((ConstSTO)b).getIntValue();
+
                 return new ConstSTO(Integer.toString(result), new IntType("int"),result);
 
             }
-            return new ExprSTO(a.getName(), new IntType("int")); 
+            return new ExprSTO(a.getName()+"+"+b.getName(), new IntType("int")); 
         }
         else {
 
@@ -34,7 +35,7 @@ class AddOp extends ArithmetricOp {
                 return new ConstSTO(Float.toString(result), new FloatType("float"),result);
 
             }
-            return new ExprSTO(a.getName(), new FloatType("float"));
+            return new ExprSTO(a.getName()+"+"+b.getName(), new FloatType("float"));
         }
     }
  

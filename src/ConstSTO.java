@@ -17,6 +17,7 @@ class ConstSTO extends STO
     //	Feel free to change this if you don't like it!
     //----------------------------------------------------------------
     private BigDecimal		m_value;
+    private boolean LitTag = false;
 
 	//----------------------------------------------------------------
 	//
@@ -60,6 +61,7 @@ class ConstSTO extends STO
 		// fields as necessary
 	}
 
+
 	//----------------------------------------------------------------
 	//
 	//----------------------------------------------------------------
@@ -99,4 +101,14 @@ class ConstSTO extends STO
 	{
 		return !BigDecimal.ZERO.equals(m_value);
 	}
+
+    //---------------------------------------------------------------
+    // helper distinguish Literal
+    //---------------------------------------------------------------
+    public void setLitTag(boolean b){
+        LitTag = b;
+    }
+    public boolean getLitTag(){
+        return LitTag;
+    }
 }

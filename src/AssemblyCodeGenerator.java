@@ -124,13 +124,33 @@ public class AssemblyCodeGenerator {
     private static final String RESTORE_OP = "restore";
     private static final String CMP_OP = "cmp";
     private static final String BE_OP = "be";
+    
+    // Operations arithmetric
+    // +/- UNarySign
     private static final String ADD_OP = "add";
+    private static final String SUB_OP = "sub";
+    private static final String NEG_OP = "neg";
+    
+    // *, /, %
+    private static final String MUL_OP = ".mul";
+    private static final String DIV_OP = ".div";
+    private static final String MOD_OP = ".rem";
+    
+    //pre/post ++/--
+    private static final String INC_OP = "inc";
+    private static final String DEC_OP = "dec";
+    
+    //bitwise
+    private static final String AND_OP = "and";
+    private static final String OR_OP = "or";
+    private static final String XOR_OP = "xor";
+    
+
+    private static final String MOV_OP = "mov";
     private static final String PRINT_OP = "printf";
     private static final String LOAD_OP = "ld";
     private static final String EXIT_OP = "exit";
     private static final String STORE_OP = "st";
-
-
 
 
     
@@ -656,7 +676,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(ONE_PARAM, ALIGN, "4" );
         this.decreaseIndent();
 
-        //set .$$.Float.#, %l7
+        //set .$$.float.#, %l7
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, SET_OP, DOLLAR + "float." + Integer.toString(constFloatCnt) , reg );
         this.decreaseIndent();
@@ -670,6 +690,13 @@ public class AssemblyCodeGenerator {
 
     public void DoFloatAssign(STO a, STO b){
 
+        this.writeAssembly(NEWLINE);
+
+        //! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! " + a.getName() + " = " + b.getName());
+        this.decreaseIndent();
+
         
         // set   var name, %o1
         this.increaseIndent();
@@ -682,20 +709,27 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
         // rodata begins
-        this.increaseIndent();
         this.DoFloatRoData(b, "%l7");
-        this.decreaseIndent();
 
         // st    %f0, [%o1]
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, STORE_OP, "%f0", "[%o1]");
+        this.decreaseIndent();
 
     }
 
     // ---------------------------------------------------------------
     // This is assignment for const Int and Bool 
     // ---------------------------------------------------------------
-    public void DoConstAssign(STO a, String b){
+    public void DoConstAssign(STO a, String b, String forcommentonly){
+
+        this.writeAssembly(NEWLINE);
+
+        //! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! " + a.getName() + " = " + forcommentonly);
+        this.decreaseIndent();
+
         // set   offset, %o1
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, SET_OP, a.getOffset(), "%o1" );
@@ -862,6 +896,9 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
         this.decreaseIndent();
         this.writeAssembly(NEWLINE);
+
+        // for pure formatting
+        this.increaseIndent();
         
     }
     
@@ -874,6 +911,11 @@ public class AssemblyCodeGenerator {
 
         
         String SAVE = "SAVE." + sto.getName() + "."+ ((FuncSTO)sto).getReturnType().getName();
+
+        // for pure formating, reflect to indent in DoFuncStart
+        this.decreaseIndent();
+
+        this.writeAssembly(NEWLINE);
 
         // ! comment
         this.increaseIndent();
@@ -904,6 +946,8 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(NO_PARAM, SAVE + " = -("+ sto.getAddress() + ") & -8"); // need to fix sth about local vars
         this.decreaseIndent();
+
+        this.writeAssembly(NEWLINE);
 
         //funcname.type.fini
         this.writeAssembly(NO_PARAM, sto.getName() + "." + ((FuncSTO)sto).getReturnType().getName() + ".fini:");
@@ -968,7 +1012,9 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(ONE_PARAM, ALIGN, "4" );
         this.decreaseIndent();
 
-        // !comment
+        this.writeAssembly(NEWLINE);
+
+        // ! comment
         this.increaseIndent();
         this.writeAssembly(NO_PARAM, "! cout << \"" +sto.getName() +"\"" );
         this.decreaseIndent();
@@ -1004,14 +1050,14 @@ public class AssemblyCodeGenerator {
     public void printConstFloat(STO sto, String reg){
 
 
+        this.writeAssembly(NEWLINE);
+
         // !comment
         this.increaseIndent();
-        this.writeAssembly(NO_PARAM, "! cout << \"" +sto.getName() +"\"" );
+        this.writeAssembly(NO_PARAM, "! cout << " +sto.getName() );
         this.decreaseIndent();
-
-        // using rodata for float
+        
         this.DoFloatRoData(sto, reg);
-
 
         //call printFloat
         this.increaseIndent();
@@ -1036,7 +1082,7 @@ public class AssemblyCodeGenerator {
 
         // !comment
         this.increaseIndent();
-        this.writeAssembly(NO_PARAM, "! cout << \"" +num +"\"" );
+        this.writeAssembly(NO_PARAM, "! cout << " +sto.getName()  );
         this.decreaseIndent();
 
         //set, #, %o1
@@ -1073,7 +1119,7 @@ public class AssemblyCodeGenerator {
 
         // !comment
         this.increaseIndent();
-        this.writeAssembly(NO_PARAM, "! cout << \"" +b +"\"" );
+        this.writeAssembly(NO_PARAM, "! cout << " +sto.getName()  );
         this.decreaseIndent();
 
         //set, #, %o0
@@ -1100,9 +1146,11 @@ public class AssemblyCodeGenerator {
     // --------------------------------------------------------------------
     public void printNL(String reg){
 
+        this.writeAssembly(NEWLINE);
+
         // !comment
         this.increaseIndent();
-        this.writeAssembly(NO_PARAM, "! cout << \" endl \"" );
+        this.writeAssembly(NO_PARAM, "! cout << endl" );
         this.decreaseIndent();
 
         // set .$$.strEndl, %o0
@@ -1133,7 +1181,7 @@ public class AssemblyCodeGenerator {
 
         // !comment
         this.increaseIndent();
-        this.writeAssembly(NO_PARAM, "! cout << \"" + sto.getName() + "\"" );
+        this.writeAssembly(NO_PARAM, "! cout << " + sto.getName() );
         this.decreaseIndent(); 
 
         // set varname, %l7
@@ -1193,10 +1241,10 @@ public class AssemblyCodeGenerator {
     
 
     //-----------------------------------------------------
-    // This handles the basic case of exit
+    // This handles the Lit case of exit
     //-----------------------------------------------------
 
-    public void DoExitConst(STO sto){
+    public void DoExitLit(STO sto){
         
         int val = ((ConstSTO)sto).getIntValue();
 
@@ -1223,6 +1271,158 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
     }
+
+    // ----------------------------------------------------------
+    // This handles the Const var and regular var case for exit
+    // ----------------------------------------------------------
+    public void DoExitBase(STO sto){
+
+        this.writeAssembly(NEWLINE);
+
+        // ! comment 
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! exit(" + sto.getName() + ")");
+        this.decreaseIndent();
+
+        // set  offset, %l7
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), "%l7");
+        this.decreaseIndent();
+
+        // add  base, %l7, %l7
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%l7", "%l7");
+        this.decreaseIndent();
+
+        // ld    [%l7], %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o0");
+        this.decreaseIndent();
+ 
+        //call    exit
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, EXIT_OP);
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+
+    }
+
+
+    // -------------------------------------------------------------------
+    // This handles all arithmetic expression for int (don't know how different it is from float, etc)
+    // -------------------------------------------------------------------
+    public void DoBinaryInt(STO a, STO b, String op, STO result){
+
+        this.writeAssembly(NEWLINE);
+
+        // ! comment 
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! " + result.getName());
+        this.decreaseIndent();
+
+        // set  a.offset, %l7
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, a.getOffset(), "%l7");
+        this.decreaseIndent();
+
+        // add  a.base, %l7, %l7
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, a.getBase(),"%l7", "%l7");
+        this.decreaseIndent();
+
+        // ld    [%l7], %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o0");
+        this.decreaseIndent();
+
+        // set  b.offset, %l7
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, b.getOffset(), "%l7");
+        this.decreaseIndent();
+
+        // add  b.base, %l7, %l7
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, b.getBase(),"%l7", "%l7");
+        this.decreaseIndent();
+
+        // ld    [%l7], %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o1");
+        this.decreaseIndent();
+
+        if(op.equals("+")){
+            this.DoPrimary(ADD_OP);
+        }
+        else if(op.equals("-")){
+            this.DoPrimary(SUB_OP);
+        }
+        else if(op.equals("/")){
+            this.DoSecondary(DIV_OP);
+        }
+        else if(op.equals("*")){
+            this.DoSecondary(MUL_OP);
+        }
+        else if(op.equals("%")){
+            this.DoSecondary(MOD_OP);
+        }
+       //check if these are the same for +/- 
+        // set  result.offset, %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, result.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        // add  result.base, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, result.getBase(),"%o1", "%o1");
+        this.decreaseIndent();
+
+        // st    %o0, [%o1]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
+        this.decreaseIndent();
+
+
+    }
+
+    // -------------------------------------------------------------------
+    // This handles +/-, called in DoBinaryInt
+    // -------------------------------------------------------------------
+    public void DoPrimary(String op){
+        
+        // +/- %o0, %o1, %o0
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, op, "%o0", "%o1", "%o0");
+        this.decreaseIndent();
+    }
+
+    // -------------------------------------------------------------------
+    // This handles *, /, %, called in DoBinaryInt
+    // -------------------------------------------------------------------
+    public void DoSecondary(String op){
+        
+        // call  *,/,%
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, op);
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+        // mov %o0, %o0  (but why?)
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, "%o0", "%o0");
+        this.decreaseIndent();   
+
+    }
+
+
 
 
 }
