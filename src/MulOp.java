@@ -25,7 +25,7 @@ class MulOp extends ArithmetricOp {
                 return new ConstSTO(Integer.toString(result), new IntType("int"),result);
 
             }
-            return new ExprSTO(a.getName(), new IntType("int")); 
+            return new ExprSTO(a.getName()+"*"+b.getName(), new IntType("int")); 
         }
         else {
             if(a instanceof ConstSTO && b instanceof ConstSTO) {
@@ -34,7 +34,7 @@ class MulOp extends ArithmetricOp {
                 return new ConstSTO(Float.toString(result), new FloatType("float"),result);
 
             }
-            return new ExprSTO(a.getName(), new FloatType("float"));
+            return new ExprSTO(a.getName()+"*"+b.getName(), new FloatType("float"));
         }
     }
  

@@ -2293,7 +2293,7 @@ class MyParser extends parser
     
     }
 
-    STO DoIncDecCheck(String s1, STO a) {
+    STO preDoIncDecCheck(String s1, STO a) {
         STO result;
 
         if (a instanceof ErrorSTO) {
@@ -2312,14 +2312,84 @@ class MyParser extends parser
             result = new ErrorSTO("Error");
             return result;
         }
-        
-        result = new ExprSTO(a.getName(), a.getType());
+         
+        if(s1.equals("++")){
+            result = new ExprSTO("++" +a.getName(), a.getType());
+        }
+        else{
+            result = new ExprSTO("--" +a.getName(), a.getType());
+        }
+        // Write Assembly: covers pre ++/-- only
+        // set offset and base
+
+        result.setBase("%fp");
+
+        offsetCnt++;
+        int val = -offsetCnt * result.getType().getSize();
+        result.setOffset(String.valueOf(val));
+
+        if(result.getType() instanceof IntType){
+            STO b = new ConstSTO("1", new IntType("int"), 1);
+            codegen.DoPrePostInt(a, b, s1, result, "%o2");
+        }
+
+
         result.setIsAddressable(false);
         result.setIsModifiable(false);
 
        return result;
 
     }
+
+
+    STO postDoIncDecCheck(String s1, STO a) {
+        STO result;
+
+        if (a instanceof ErrorSTO) {
+            return a;
+        }
+
+
+        if (!(a.getType() instanceof NumericType) && !(a.getType() instanceof PointerType)) {
+            m_nNumErrors++;
+            m_errors.print(Formatter.toString(ErrorMsg.error2_Type,a.getType().getName(), s1));
+            return result = new ErrorSTO("Error");
+        }
+        else if (!(a.isModLValue())){
+            m_nNumErrors++;
+            m_errors.print(Formatter.toString(ErrorMsg.error2_Lval,s1));
+            result = new ErrorSTO("Error");
+            return result;
+        }
+         
+        if(s1.equals("++")){
+            result = new ExprSTO(a.getName()+"++", a.getType());
+        }
+        else{
+            result = new ExprSTO(a.getName()+"--", a.getType());
+        }       
+
+        // Write Assembly: covers post ++/-- only
+        // set offset and base
+
+        result.setBase("%fp");
+
+        offsetCnt++;
+        int val = -offsetCnt * result.getType().getSize();
+        result.setOffset(String.valueOf(val));
+
+        if(result.getType() instanceof IntType){
+            STO b = new ConstSTO("1", new IntType("int"), 1);
+            codegen.DoPrePostInt(a, b, s1, result, "%o0");
+        }
+
+        result.setIsAddressable(false);
+        result.setIsModifiable(false);
+
+       return result;
+
+    }
+
 
     STO DoIfAndWhile(STO a){
         STO result;
@@ -3085,7 +3155,7 @@ class MyParser extends parser
             if(sto instanceof ExprSTO){
                 if(sto.getName().equals("endl")){
                     codegen.printNL("%o0");
-                    break;
+                    continue;
                 }
                 else{
                     codegen.printVar(sto, "%l7");

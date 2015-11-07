@@ -1312,6 +1312,44 @@ public class AssemblyCodeGenerator {
 
     }
 
+    // -------------------------------------------------------------------
+    // A helper that takes care that if the operand in DoBinary is var
+    // -------------------------------------------------------------------
+    public void DoOperandLit(STO sto, String reg){
+        ConstSTO con = (ConstSTO)sto;
+
+        int value = con.getIntValue();
+
+        // set  #, %l7
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(value), reg);
+        this.decreaseIndent();
+
+    }
+
+    // -------------------------------------------------------------------
+    // A helper that takes care that if the operand in DoBinary is var
+    // -------------------------------------------------------------------
+    public void DoOperand(STO sto, String reg){
+        
+        // set  sto.offset, %l7
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), "%l7");
+        this.decreaseIndent();
+
+        // add  sto.base, %l7, %l7
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%l7", "%l7");
+        this.decreaseIndent();
+
+        // ld    [%l7], %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", reg);
+        this.decreaseIndent();
+
+
+    }
+
 
     // -------------------------------------------------------------------
     // This handles all arithmetic expression for int (don't know how different it is from float, etc)
@@ -1325,41 +1363,33 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(NO_PARAM, "! " + result.getName());
         this.decreaseIndent();
 
-        // set  a.offset, %l7
-        this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, SET_OP, a.getOffset(), "%l7");
-        this.decreaseIndent();
 
-        // add  a.base, %l7, %l7
-        this.increaseIndent();
-        this.writeAssembly(THREE_PARAM, ADD_OP, a.getBase(),"%l7", "%l7");
-        this.decreaseIndent();
+        // check the first operand is Lit 
+        if(a instanceof ConstSTO && (!((ConstSTO)a).getLitTag())){
+           this.DoOperandLit(a, "%o0"); 
+            
+        }
+        else{
+            this.DoOperand(a, "%o0");
+        }
 
-        // ld    [%l7], %o0
-        this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o0");
-        this.decreaseIndent();
 
-        // set  b.offset, %l7
-        this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, SET_OP, b.getOffset(), "%l7");
-        this.decreaseIndent();
+        // check the second operand is Lit
+        if(b instanceof ConstSTO && (!((ConstSTO)b).getLitTag())){
+           this.DoOperandLit(b, "%o1"); 
+            
+        }
+        else{
+            this.DoOperand(b, "%o1");
+        }
 
-        // add  b.base, %l7, %l7
-        this.increaseIndent();
-        this.writeAssembly(THREE_PARAM, ADD_OP, b.getBase(),"%l7", "%l7");
-        this.decreaseIndent();
 
-        // ld    [%l7], %o1
-        this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o1");
-        this.decreaseIndent();
 
         if(op.equals("+")){
-            this.DoPrimary(ADD_OP);
+            this.DoPrimary(ADD_OP, "%o0");
         }
         else if(op.equals("-")){
-            this.DoPrimary(SUB_OP);
+            this.DoPrimary(SUB_OP, "%o0");
         }
         else if(op.equals("/")){
             this.DoSecondary(DIV_OP);
@@ -1370,7 +1400,17 @@ public class AssemblyCodeGenerator {
         else if(op.equals("%")){
             this.DoSecondary(MOD_OP);
         }
-       //check if these are the same for +/- 
+        else if(op.equals("|")){
+            this.DoPrimary(OR_OP, "%o0");
+        }
+        else if(op.equals("&")){
+            this.DoPrimary(AND_OP, "%o0");
+        }
+        else if(op.equals("^")){
+            this.DoPrimary(XOR_OP, "%o0");
+        }
+
+ 
         // set  result.offset, %o1
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, SET_OP, result.getOffset(), "%o1");
@@ -1389,14 +1429,76 @@ public class AssemblyCodeGenerator {
 
     }
 
+
+
     // -------------------------------------------------------------------
-    // This handles +/-, called in DoBinaryInt
+    // This handles pre/post inc/dev only for int (don't know how different it is from float, etc)
     // -------------------------------------------------------------------
-    public void DoPrimary(String op){
+    public void DoPrePostInt(STO a, STO b, String op, STO result, String reg){
+
+        this.writeAssembly(NEWLINE);
+
+        // ! comment 
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! " + result.getName());
+        this.decreaseIndent();
+
+
+        this.DoOperand(a, "%o0");
+        
+        this.DoOperandLit(b, "%o1"); 
+            
+
+
+        if(op.equals("++")){
+            this.DoPrimary(ADD_OP, "%o2");
+        }
+        else if(op.equals("--")){
+            this.DoPrimary(SUB_OP, "%o2");
+        }
+ 
+        // set  result.offset, %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, result.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        // add  result.base, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, result.getBase(),"%o1", "%o1");
+        this.decreaseIndent();
+
+        // st    %o0, [%o1]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, reg, "[%o1]");
+        this.decreaseIndent();
+
+        // set a.getoffset, %o1
+        this.increaseIndent();        
+        this.writeAssembly(TWO_PARAM, SET_OP, a.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        // add %fp, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, a.getBase(), "%o1", "%o1");
+        this.decreaseIndent();
+
+        // st   %o2, [%o1]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%o2", "[%o1]");
+        this.decreaseIndent();
+       
+
+    }
+
+
+    // -------------------------------------------------------------------
+    // This handles +/-, and bitwise, called in DoBinaryInt
+    // -------------------------------------------------------------------
+    public void DoPrimary(String op, String reg){
         
         // +/- %o0, %o1, %o0
         this.increaseIndent();
-        this.writeAssembly(THREE_PARAM, op, "%o0", "%o1", "%o0");
+        this.writeAssembly(THREE_PARAM, op, "%o0", "%o1", reg);
         this.decreaseIndent();
     }
 
