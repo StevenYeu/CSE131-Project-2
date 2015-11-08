@@ -661,7 +661,7 @@ class MyParser extends parser
               	    sto = new VarSTO(id,t);
 
 
-                    //assembly for uninit global var decl
+                    //Assembly writing: for uninit global var decl
                     //global scope is always 1
                     if(m_symtab.getLevel() == 1 ||  (optstatic != null)){
                         sto.setBase("%g0");
@@ -690,7 +690,7 @@ class MyParser extends parser
 
 
                 //assembly for init global/static var decl
-                Type typ = expr.getType();
+                Type typ = sto.getType();
 
                 // case in global or static
                 if(m_symtab.getLevel() == 1 || (optstatic != null)){
@@ -715,6 +715,7 @@ class MyParser extends parser
                             codegen.DoGlobalVarInitLit(sto, str);
                         }
                         else if(typ instanceof FloatType){
+
                             float f = exp.getFloatValue();
                             String str = String.valueOf(f);
                             codegen.DoGlobalVarInitLit(sto, str);
@@ -722,8 +723,25 @@ class MyParser extends parser
                     } 
                     // var init
                     else{
-
                         codegen.DoGlobalVarInitVar(sto, expr);
+                        codegen.increaseIndent();
+                        if(expr instanceof FuncSTO){
+                            codegen.DoFuncCallNoParam(expr);
+                        }
+                        
+                        if(codegen.assignA.isEmpty()){
+                            codegen.DoVarAssign(sto, expr);
+                        }
+                        else{
+                            for(int i = 0; i < codegen.assignA.size(); i++){
+                                codegen.DoVarAssign(codegen.assignA.get(i), codegen.assignB.get(i));
+                             }
+                             codegen.DoVarAssign(sto,expr);
+
+                         }
+                        codegen.decreaseIndent();
+                        codegen.initGlobalVarEnd(sto, expr);
+
                     }
                 }
                 // case in local
@@ -742,7 +760,18 @@ class MyParser extends parser
                         int i;
 
                         if(typ instanceof FloatType){
+                            if(expr.getType() instanceof IntType){
+                                //set left-hand side offset and base
+                            
+                                    offsetCnt ++;
+                                    int exo = -offsetCnt * expr.getType().getSize();
+                                    expr.setBase("%fp");
+                                    expr.setOffset(String.valueOf(exo));
+                                
+                            }
+                            
                             codegen.DoFloatAssign(sto, expr);
+                            
                         }
                         else if(typ instanceof IntType){
                             i = exp.getIntValue();
@@ -942,8 +971,17 @@ class MyParser extends parser
                 int i;
 
                 if(t instanceof FloatType){
+                    if( constexpr.getType() instanceof IntType){
+                        //set left-hand side offset and base
+                        offsetCnt ++;
+                        int exo = -offsetCnt * constexpr.getType().getSize();
+                        constexpr.setBase("%fp");
+                        constexpr.setOffset(String.valueOf(exo));
+                    }
+                    
                     if(exp.getLitTag()){
-                        codegen.DoFloatAssign(sto, constexpr);
+                        //treat non-lit const like var
+                        codegen.DoVarAssign(sto, constexpr);
                     }
                     else{
                         codegen.DoFloatAssign(sto, constexpr);
@@ -1304,7 +1342,6 @@ class MyParser extends parser
 		//WRITE ASSEMBLY:
         // the end of the function
         FuncSTO fun = m_symtab.getFunc();
-        fun.setBase("92");
         /*
         Vector<STO> s = m_symtab.getCurrScope().getLocals();
         int offset = 0;
@@ -1619,18 +1656,31 @@ class MyParser extends parser
               }
               else {
                   if(overParSize == 0 && parSize == 0) { // case if calling function has no params
-                     STO result =  new ExprSTO(fun.getName(),fun.getType());
+                     STO result = new ExprSTO(fun.getName(),fun.getType());
                      if(fun.flag == true) { // return by ref set to Mod L
-                        result.setIsModifiable(true);
-                        result.setIsAddressable(true);
-                        return result;
+                        fun.setIsModifiable(true);
+                        fun.setIsAddressable(true);
                      }
                      else { // if return by value set to R val
-                        result.setIsModifiable(false);
-                        result.setIsAddressable(false);
-                        return result;
+                        fun.setIsModifiable(false);
+                        fun.setIsAddressable(false);
                      
                      }
+                     if(((FuncSTO)fun).getReturnType() instanceof VoidType){
+                         codegen.DoFuncCallNoParamVoid(fun);
+                     }
+                     else{
+                         offsetCnt ++;
+                         int val = -offsetCnt * ((FuncSTO)fun).getReturnType().getSize();
+                         String offset = String.valueOf(val);
+                         fun.setOffset(offset);
+                         fun.setBase("%fp");
+                         if(m_symtab.getLevel() != 1 ){
+                             codegen.DoFuncCallNoParam(fun);
+                         }
+                         
+                     }
+                     return fun;
                   }
                   else { // case if nonzero params 
                      return this.DoFunctionCall(sto,params,overloaded); // helper function 
@@ -1641,6 +1691,7 @@ class MyParser extends parser
                return this.DoOverloadCall(sto,params,overloaded);
            
            }
+
           return sto;
        }
 	}
@@ -2257,13 +2308,29 @@ class MyParser extends parser
         result.setIsAddressable(false);
 
         //Assembly writing: Cover all binary arithmetric for int  check: 1.4
-        result.setBase("%fp");
-        offsetCnt++;
-        int val = -offsetCnt * result.getType().getSize();
-        String value = String.valueOf(val);
-        result.setOffset(value);
-        if(result.getType() instanceof IntType){
-            codegen.DoBinaryInt(a, b, o.getOp(), result);
+        
+        // check if both operands are Lit 
+        boolean aIsLit = false;
+        boolean bIsLit = false;
+        if(a instanceof ConstSTO && !((ConstSTO)a).getLitTag()){
+            aIsLit = true;
+        }
+
+        if(b instanceof ConstSTO && !((ConstSTO)b).getLitTag()){
+            bIsLit = true;
+        }
+
+
+        if(a.getType() instanceof IntType && b.getType() instanceof IntType){
+            if(!aIsLit || !bIsLit){
+                   
+                result.setBase("%fp");
+                offsetCnt++;
+                int val = -offsetCnt * result.getType().getSize();
+                String value = String.valueOf(val);
+                result.setOffset(value);
+                codegen.DoBinaryInt(a, b, o.getOp(), result);
+            }
         }
 
 
@@ -2405,7 +2472,24 @@ class MyParser extends parser
             return new ErrorSTO("Error");
         }
         result = a;
+
+        //Write Assembly: cover if statement with int in condition exp ( for now )
+        if(a instanceof ConstSTO && !((ConstSTO)a).getLitTag()){
+            codegen.DoIfLitCond(a);
+        }
+        else{
+            codegen.DoIfExprCond(a);
+        }
         return result;
+    }
+
+    // Write Assembly: call DoElse in ACG
+    void CallDoElse(){
+        codegen.DoElse();
+    }
+    // Write Assembly: call DoEndIf in ACG
+    void CallDoIfEnd(){
+        codegen.DoEndIf();
     }
 
     STO ProcessParams(String s) {
@@ -2611,8 +2695,30 @@ class MyParser extends parser
                     return new ErrorSTO("Error");
         }
 
+        // Write Assembly: for Lit return stmt
+        if(expr instanceof ConstSTO && !((ConstSTO)expr).getLitTag()){
+            Type t = expr.getType(); 
+            String exp = "";
+            if(t instanceof IntType){
+                int i = ((ConstSTO)expr).getIntValue();
+                exp = String.valueOf(i);
+            }
+            else if(t instanceof FloatType){
+                float i = ((ConstSTO)expr).getFloatValue();
+                exp = String.valueOf(i);
+            }
+            else if(t instanceof BoolType){
+                int i = ((ConstSTO)expr).getBoolValue() ? 1 : 0;
+                exp = String.valueOf(i);
+            }
+
+            codegen.DoReturnLit(m_symtab.getFunc(), exp);
+        }
+        // for all other cases
+        else{
+            codegen.DoReturnNonVoid(m_symtab.getFunc(), expr);
+        }
         return new ExprSTO("return", m_symtab.getFunc().getReturnType() );
-        
     }
 
 
@@ -2622,9 +2728,13 @@ class MyParser extends parser
                 m_errors.print(ErrorMsg.error6a_Return_expr);
                 return new ErrorSTO("Error");
         }
+        
+        
+        //Write Assembly: for void return stmt
+        codegen.DoReturnVoid(m_symtab.getFunc());
 
         return new ExprSTO("return", m_symtab.getFunc().getReturnType() );
-
+    
     }
 
     STO MissingReturnStmt(Type typ, Vector<STO> stmtlist){

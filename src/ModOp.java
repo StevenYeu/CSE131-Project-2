@@ -30,7 +30,7 @@ class ModOp extends ArithmetricOp {
                 return new ConstSTO(Integer.toString(result), new IntType("int"),result);
 
             }
-            return new ExprSTO(a.getName(), new IntType("int")); 
+            return new ExprSTO(a.getName()+"%"+ b.getName(), new IntType("int")); 
         }
         return new ErrorSTO(a.getType().getName());
         

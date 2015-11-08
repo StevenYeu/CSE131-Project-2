@@ -83,4 +83,18 @@ class FuncSTO extends STO
     public void setIsStruct(boolean b) {
        isStruct = b;
     }
+
+    public String getAssemblyName() {
+        if(params.isEmpty()) {return "void";}
+        String name = "";
+        for(int i =0; i < params.size();i++) {
+           name = name.concat(params.get(i).getType().getName());
+           if(i == params.size()-1) {
+              break;
+           }
+           name = name.concat(".");
+
+        }
+        return name;
+    }
 }

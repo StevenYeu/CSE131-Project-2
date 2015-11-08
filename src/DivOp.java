@@ -28,7 +28,7 @@ class DivOp extends ArithmetricOp {
                 return new ConstSTO(Integer.toString(result), new IntType("int"),result);
 
             }
-            return new ExprSTO(a.getName(), new IntType("int")); 
+            return new ExprSTO(a.getName()+"/"+b.getName(), new IntType("int")); 
         }
         else {
 
@@ -41,7 +41,7 @@ class DivOp extends ArithmetricOp {
 
             }
  
-            return new ExprSTO(a.getName(), new FloatType("float"));
+            return new ExprSTO(a.getName()+"/"+b.getName(), new FloatType("float"));
         }
     }
  

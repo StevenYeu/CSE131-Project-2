@@ -27,7 +27,7 @@ class OrOp extends BooleanOp {
 
             }
  
-            return new ExprSTO("result", new BoolType("bool"));
+            return new ExprSTO(a.getName()+"|"+b.getName(), new BoolType("bool"));
         }
         return new ErrorSTO("Error");
         

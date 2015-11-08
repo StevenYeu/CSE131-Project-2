@@ -672,7 +672,14 @@ IfStmt ::=          T_IF Expr:_1
                     {:
                         RESULT =((MyParser) parser).DoIfAndWhile(_1);
                     :}
-                    CodeBlock OptElse
+                    CodeBlock
+                    {:
+                        ((MyParser) parser).CallDoElse();
+                    :}
+                    OptElse
+                    {:
+                        ((MyParser) parser).CallDoIfEnd();
+                    :}
 
     ;
 

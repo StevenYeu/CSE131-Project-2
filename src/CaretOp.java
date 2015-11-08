@@ -21,7 +21,7 @@ class CaretOp extends BitwiseOp {
                 return new ConstSTO(Integer.toString(result), new IntType("int"),result);
 
             }
-            return new ExprSTO(a.getName(), new IntType("int")); 
+            return new ExprSTO(a.getName()+"^"+b.getName(), new IntType("int")); 
  
         }
         return new ErrorSTO("Error");
