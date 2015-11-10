@@ -758,7 +758,7 @@ ReadStmt ::=        T_CIN T_ISTREAM Designator T_SEMI
 
 WriteStmt ::=       T_COUT T_OSTREAM WritePairList:_1 T_SEMI
                     {:
-                        ((MyParser) parser).DoPrint(_1);
+                       // ((MyParser) parser).DoPrint(_1);
                     :}
     ;
 
@@ -767,11 +767,13 @@ WritePairList ::=   WritePair:_1
                     {:
                         RESULT = new Vector<STO>();
                         RESULT.addElement(_1);
+                        ((MyParser) parser).DoPrint(_1);
                     :}
     |               WritePairList:_1 T_OSTREAM WritePair:_2
                     {:
                         RESULT = _1;
                         RESULT.addElement(_2);
+                        ((MyParser)parser).DoPrint(_2);
                     :}
     ;
 

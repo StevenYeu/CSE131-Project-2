@@ -31,7 +31,10 @@ class MyParser extends parser
     private boolean newCall = false; // new statement
     private AssemblyCodeGenerator codegen; 
 
+    // keep track of the offset
     private int offsetCnt = 0;
+    // keep track of the line num
+    private int m_nSavedLineCnt;
 
     //list for a = b = c
     public Vector<STO> assignA = new Vector<STO>();
@@ -157,6 +160,23 @@ class MyParser extends parser
 	{
 		m_nSavedLineNum = m_lexer.getLineNumber();
 	}
+
+    //----------------------------------------------------------------
+    // This is used for hold off
+    //----------------------------------------------------------------
+    public void SaveLineCnt()
+    {
+		m_nSavedLineCnt = m_lexer.getLineNumber();
+    }
+	//----------------------------------------------------------------
+	// This is also used for hold off
+	//----------------------------------------------------------------
+	public int GetSavedLineCnt()
+	{
+		return m_nSavedLineCnt;
+	}
+
+
 
 	//----------------------------------------------------------------
 	//
@@ -1587,7 +1607,15 @@ class MyParser extends parser
         }
         else{
     
-            if(this.GetSavedLineNum() != this.GetLineNum() || m_symtab.getLevel() != 1){
+            if(this.GetSavedLineCnt() == 0){
+                this.SaveLineCnt(); 
+            }
+            if(this.GetSavedLineCnt() != this.GetLineNum()){
+        
+                if(codegen.getholdOff()){
+                    codegen.TimeToWrite();
+                }
+                this.SaveLineCnt();
                 codegen.setholdOff(false);
             }
             else{
@@ -1716,13 +1744,20 @@ class MyParser extends parser
                          fun.setOffset(offset);
                          fun.setBase("%fp");
 
-                         if(this.GetSavedLineNum() != this.GetLineNum()){
+                         if(this.GetSavedLineCnt() == 0){
+                             this.SaveLineCnt();
+                         }
+                         if(this.GetSavedLineCnt() != this.GetLineNum()){
+                             if(codegen.getholdOff()){
+                                 codegen.TimeToWrite();
+                             }
+                             this.SaveLineCnt();
                              codegen.setholdOff(false);
                          }
                          else{
                              codegen.setholdOff(true);
                          }
-                         System.out.println("ASS: " + codegen.getholdOff());
+
                          codegen.DoFuncCallNoParam(fun);
 
                          
@@ -2371,7 +2406,15 @@ class MyParser extends parser
 
             if((!(a instanceof ConstSTO)) || (!(b instanceof ConstSTO))){
                 
-                if(this.GetSavedLineNum() != this.GetLineNum() || m_symtab.getLevel() != 1){
+                if(this.GetSavedLineCnt() == 0){
+                    this.SaveLineCnt();
+                }
+                if(this.GetSavedLineCnt() != this.GetLineNum()){
+                    if(codegen.getholdOff()){
+                        codegen.TimeToWrite();
+                    }
+
+                    this.SaveLineCnt();
                     codegen.setholdOff(false);
                 }
                 else{
@@ -3321,51 +3364,48 @@ class MyParser extends parser
     //------------------------------------------------------------------------
     //cout for assembly 
     //-----------------------------------------------------------------------
-    void DoPrint(Vector<STO> printlist){
+    void DoPrint(STO sto){
+        // This is here because we still want everything besides funccall to print immediately
+        if(codegen.getholdOff()){
+            codegen.TimeToWrite();
+        }
         codegen.setholdOff(false);
-        for(int i = 0; i < printlist.size(); i++){
+        
             
-            STO sto = printlist.get(i);
-            Type t = sto.getType();
+        Type t = sto.getType();
 
 
-            //check for endl
-            if(sto instanceof ExprSTO){
-                if(sto.getName().equals("endl")){
-                    codegen.printNL("%o0");
-                    continue;
-                }
-                else{
+        //check for endl
+        if(sto instanceof ExprSTO){
+            if(sto.getName().equals("endl")){
+                codegen.printNL("%o0");
 
-                    codegen.printVar(sto, "%l7");
-                }
-            }
-
-            else if(sto instanceof ConstSTO && !((ConstSTO)sto).getLitTag()){
-            // const string printing
-                if(!(t instanceof BasicType)){
-                    codegen.printConstStr(sto, "%o1");
-                }
-                else if(t instanceof FloatType){
-                    codegen.printConstFloat(sto, "%l7");
-                }
-                else if(t instanceof IntType){
-                    codegen.printConstInt(sto, "%o1");
-                }
-                else{
-                    codegen.printConstBool(sto,"%o0");
-                }
             }
             else{
-
-                //codegen.setholdOff(false);
-                codegen.TimeToWrite();
                 codegen.printVar(sto, "%l7");
+
             }
-
-
         }
-    
+
+        else if(sto instanceof ConstSTO && !((ConstSTO)sto).getLitTag()){
+            // const string printing
+            if(!(t instanceof BasicType)){
+                codegen.printConstStr(sto, "%o1");
+            }
+            else if(t instanceof FloatType){
+                codegen.printConstFloat(sto, "%l7");
+            }
+            else if(t instanceof IntType){
+                codegen.printConstInt(sto, "%o1");
+            }
+            else{
+                codegen.printConstBool(sto,"%o0");
+            }
+        }
+        else{
+            codegen.printVar(sto, "%l7");
+        }
+   
     }
 
 
