@@ -675,7 +675,7 @@ public class AssemblyCodeGenerator {
 
             // int to float, type promote
             if(promote != null){
-                this.DoTypePromotion(promote, "%f0");
+                this.DoTypePromotion(promote, "%f0", "%o0");
 
                 //st   %f0, [%o1]
                 this.increaseIndent();
@@ -780,7 +780,7 @@ public class AssemblyCodeGenerator {
             this.decreaseIndent();
 
             // do type promotion
-            this.DoTypePromotion(promote, "%f0");
+            this.DoTypePromotion(promote, "%f0", "%o0");
 
         }
         // rodata only for float to float
@@ -1513,7 +1513,7 @@ public class AssemblyCodeGenerator {
     // -------------------------------------------------------------------
     // Int to Float promotion helper method
     // -------------------------------------------------------------------
-    public void DoTypePromotion(STO sto, String reg){
+    public void DoTypePromotion(STO sto, String reg, String reg2){
         //set     	offset, %l7
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), "%l7");
@@ -1524,9 +1524,9 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%l7", "%l7");
 		this.decreaseIndent();
        
-		//st      	%o0, [%l7]
+		//st      	reg2, [%l7]
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%l7]");
+        this.writeAssembly(TWO_PARAM, STORE_OP, reg2, "[%l7]");
 		this.decreaseIndent();
 
 		//ld      	[%l7], %f0
@@ -1573,7 +1573,7 @@ public class AssemblyCodeGenerator {
 
         // check the first operand is int
         if(promoteA != null){
-            this.DoTypePromotion(promoteA, "%f0");
+            this.DoTypePromotion(promoteA, "%f0", "%o0");
         }
 
 
@@ -1588,7 +1588,7 @@ public class AssemblyCodeGenerator {
 
         // check the second operand is int
         if(promoteB != null){
-            this.DoTypePromotion(promoteB, "%f1");
+            this.DoTypePromotion(promoteB, "%f1", "%o1");
         }
 
 
