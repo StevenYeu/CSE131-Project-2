@@ -293,12 +293,9 @@ class MyParser extends parser
             }
             //var init
             else{
-                // Type promotion
-                if(sto.getType() instanceof FloatType){
-                }
-                else{
-                    codegen.DoVarAssign(sto, expr, null);
-                }
+
+                codegen.DoVarAssign(sto, expr, null);
+                
 
             }
 
@@ -760,12 +757,33 @@ class MyParser extends parser
                         // write when the hold off is off
                         codegen.TimeToWrite();
 
+                        // Type promotion
+                        if(sto.getType() instanceof FloatType && expr.getType() instanceof IntType){
+                            // This does nothing except holds offset and base 
+                            STO promote = new ExprSTO("temp");
+                            offsetCnt++;
+                            int value = -offsetCnt*4;
+                            promote.setOffset(String.valueOf(value));
+                            promote.setBase("%fp");
 
-                        codegen.DoVarAssign(sto,expr, null);
+                            codegen.DoVarAssign(sto, expr, promote);
+                  
+                        }
+                        else{
+                            codegen.DoVarAssign(sto,expr, null);
+                        }
+
+
+
+                        //a sto for this init func, does nothing except holds offset and base
+                        STO func = new FuncSTO("tempFunc");
+                        int val = offsetCnt*4;
+                        func.setOffset("+"+String.valueOf(val));
+                        func.setBase("92");
 
 
                         // init func ender
-                        codegen.initGlobalVarEnd(sto, expr);
+                        codegen.initGlobalVarEnd(sto, expr, func);
 
                     }
                 }
@@ -817,8 +835,20 @@ class MyParser extends parser
                     }
                     //var init
                     else{
-                        codegen.DoVarAssign(sto, expr, null);
+                        if(sto.getType() instanceof FloatType && expr.getType() instanceof IntType){
+                            // This does nothing except holds offset and base 
+                            STO promote = new ExprSTO("temp");
+                            offsetCnt++;
+                            int pro = -offsetCnt*4;
+                            promote.setOffset(String.valueOf(pro));
+                            promote.setBase("%fp");
 
+                            codegen.DoVarAssign(sto, expr, promote);
+                  
+                        }
+                        else{
+                            codegen.DoVarAssign(sto, expr, null);
+                        }
                     }
                 }
                 
@@ -1006,17 +1036,26 @@ class MyParser extends parser
                         int exo = -offsetCnt * 4;
                         promote.setBase("%fp");
                         promote.setOffset(String.valueOf(exo));
-
-                        codegen.DoFloatAssign(sto, constexpr, promote);
-                    }
                     
-                    if(exp.getLitTag()){
+                    
+                        if(exp.getLitTag()){
                         //treat non-lit const like var
-                        codegen.DoVarAssign(sto, constexpr, null);
+                            codegen.DoVarAssign(sto, constexpr, promote);
+                  
+                        }
+                        else{
+                            codegen.DoFloatAssign(sto,constexpr, promote);
+                        }
                     }
                     else{
                         // float to float
-                        codegen.DoFloatAssign(sto, constexpr, null);
+                        if(exp.getLitTag()){
+                            codegen.DoVarAssign(sto, constexpr, null);
+                        }
+                    
+                        else{
+                            codegen.DoFloatAssign(sto, constexpr, null);
+                        }
                     }
                 }
                 else if(t instanceof IntType){
@@ -2430,11 +2469,28 @@ class MyParser extends parser
 
                 if(a.getType() instanceof FloatType || b.getType() instanceof FloatType){
                     if(a.getType() instanceof IntType){
-                       STO promote = new ExprSTO("temp"); 
+                       STO promote = new ExprSTO("temp");
+                       offsetCnt ++;
+                       int off = -offsetCnt * 4;
+                       promote.setOffset(String.valueOf(off));
+                       promote.setBase("%fp");
+
+                       codegen.DoBinaryFloat(a, promote, b, null, o.getOp(), result);
+
                     }
                     else if(b.getType() instanceof IntType){
+                       STO promote = new ExprSTO("temp");
+                       offsetCnt ++;
+                       int off = -offsetCnt * 4;
+                       promote.setOffset(String.valueOf(off));
+                       promote.setBase("%fp"); 
+
+                       codegen.DoBinaryFloat(a, null, b, promote, o.getOp(), result);
+
                     }
-                    codegen.DoBinaryFloat(a, b, o.getOp(), result);
+                    else{
+                        codegen.DoBinaryFloat(a, null, b, null, o.getOp(), result);
+                    }
                 }
                 else{
                     codegen.DoBinaryInt(a, b, o.getOp(), result);
@@ -2448,7 +2504,6 @@ class MyParser extends parser
     }
 
     STO DoUnaryExpr(STO a, Operator o) {
-
 
         if(a instanceof ErrorSTO) {
             return a;
@@ -2465,7 +2520,7 @@ class MyParser extends parser
             result = new ErrorSTO("Error");
             
         }
-
+        
         return result;
     
     }
@@ -2911,18 +2966,61 @@ class MyParser extends parser
     STO DoUnarySign(String s, STO des){
         if(des instanceof ErrorSTO)
             return des;
+
+        System.out.println(des.getOffset());
+        STO sto = new ExprSTO(des.getName(),des.getType());
         if(s == "-"){
             if( des instanceof ConstSTO){
                 if(des.getType() instanceof IntType){
-                    return new ConstSTO("-" + des.getName(), des.getType(), -1*((ConstSTO)des).getIntValue());
+                    sto = new ConstSTO("-" + des.getName(), des.getType(), -1*((ConstSTO)des).getIntValue());
                 }
                 else if(des.getType() instanceof FloatType){
-                    return new ConstSTO("-" + des.getName(), des.getType(), -1.0*((ConstSTO)des).getFloatValue());
+                    sto = new ConstSTO("-" + des.getName(), des.getType(), -1.0*((ConstSTO)des).getFloatValue());
                 }
             }
             
         }
-        return des;
+        else{
+            if( des instanceof ConstSTO){
+                if(des.getType() instanceof IntType){
+                    sto = new ConstSTO("+" + des.getName(), des.getType(), ((ConstSTO)des).getIntValue());
+                }
+                else if(des.getType() instanceof FloatType){
+                    sto = new ConstSTO("+" + des.getName(), des.getType(), ((ConstSTO)des).getFloatValue());
+                }
+            }
+            
+        }
+        offsetCnt ++;
+        int val = -offsetCnt * 4;
+        sto.setOffset(String.valueOf(val));
+        sto.setBase("%fp");
+
+        String reg;
+        if(des.getType() instanceof IntType){
+            reg = "%o0"; 
+        }
+        else{
+            reg = "%f0";
+        }
+   
+        if(this.GetSavedLineCnt() == 0){
+            this.SaveLineCnt(); 
+        }
+        if(this.GetSavedLineCnt() != this.GetLineNum()){
+        
+            if(codegen.getholdOff()){
+                codegen.TimeToWrite();
+            }
+            this.SaveLineCnt();
+            codegen.setholdOff(false);
+        }
+        else{
+            codegen.setholdOff(true);
+        }
+        codegen.DoUnary(des, sto, reg, s);
+
+        return sto;
     }
 
     public int CountChar(String s, char c) {
