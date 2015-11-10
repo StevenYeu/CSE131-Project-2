@@ -739,12 +739,12 @@ public class AssemblyCodeGenerator {
 
         //set .$$.float.#, %l7
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, SET_OP, DOLLAR + "float." + Integer.toString(constFloatCnt) , reg );
+        this.writeAssembly(TWO_PARAM, SET_OP, DOLLAR + "float." + Integer.toString(constFloatCnt) , "%l7" );
         this.decreaseIndent();
 
         //ld [%l7], %f0
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%f0");
+        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", reg);
         this.decreaseIndent();
 
     }
@@ -785,7 +785,7 @@ public class AssemblyCodeGenerator {
         }
         // rodata only for float to float
         else{
-            this.DoFloatRoData(b, "%l7");
+            this.DoFloatRoData(b, "%f0");
         }
         // st    %f0, [%o1]
         this.increaseIndent();
@@ -1394,14 +1394,27 @@ public class AssemblyCodeGenerator {
     public void DoOperandLit(STO sto, String reg){
         ConstSTO con = (ConstSTO)sto;
 
-        int value = con.getIntValue();
+        if(sto.getType() instanceof IntType){
+            int value = con.getIntValue();
 
-        // set  #, %l7
-        this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(value), reg);
-        this.decreaseIndent();
+            // set  #, reg
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(value), reg);
+            this.decreaseIndent();
+        }
+        else{
+            float value = con.getFloatValue();
+
+            
+            this.DoFloatRoData(sto, reg);
+
+
+        }
 
     }
+
+
+
 
     // -------------------------------------------------------------------
     // A helper that takes care that if the operand in DoBinary is var
@@ -1706,6 +1719,65 @@ public class AssemblyCodeGenerator {
     // This handles pre/post inc/dev only for int (don't know how different it is from float, etc)
     // -------------------------------------------------------------------
     public void DoPrePostInt(STO a, STO b, String op, STO result, String reg){
+
+        this.writeAssembly(NEWLINE);
+
+        // ! comment 
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! " + result.getName());
+        this.decreaseIndent();
+
+
+        this.DoOperand(a, "%o0");
+        
+        this.DoOperandLit(b, "%o1"); 
+            
+
+
+        if(op.equals("++")){
+            this.DoPrimary(ADD_OP, "%o0", "%o1", "%o2");
+        }
+        else if(op.equals("--")){
+            this.DoPrimary(SUB_OP, "%o0", "%o1", "%o2");
+        }
+ 
+        // set  result.offset, %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, result.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        // add  result.base, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, result.getBase(),"%o1", "%o1");
+        this.decreaseIndent();
+
+        // st    %o0, [%o1]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, reg, "[%o1]");
+        this.decreaseIndent();
+
+        // set a.getoffset, %o1
+        this.increaseIndent();        
+        this.writeAssembly(TWO_PARAM, SET_OP, a.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        // add %fp, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, a.getBase(), "%o1", "%o1");
+        this.decreaseIndent();
+
+        // st   %o2, [%o1]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%o2", "[%o1]");
+        this.decreaseIndent();
+       
+
+    }
+
+    // -------------------------------------------------------------------
+    // This handles pre/post inc/dev only for float
+    // -------------------------------------------------------------------
+    public void DoPrePostFloat(STO a, STO b, String op, STO result, String reg){
 
         this.writeAssembly(NEWLINE);
 

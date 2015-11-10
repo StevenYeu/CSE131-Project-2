@@ -3491,7 +3491,7 @@ class MyParser extends parser
                 codegen.printConstStr(sto, "%o1");
             }
             else if(t instanceof FloatType){
-                codegen.printConstFloat(sto, "%l7");
+                codegen.printConstFloat(sto, "%f0");
             }
             else if(t instanceof IntType){
                 codegen.printConstInt(sto, "%o1");
