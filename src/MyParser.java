@@ -33,6 +33,10 @@ class MyParser extends parser
 
     private int offsetCnt = 0;
 
+    //list for a = b = c
+    public Vector<STO> assignA = new Vector<STO>();
+    public Vector<STO> assignB = new Vector<STO>();
+
 	private SymbolTable m_symtab;
 	//----------------------------------------------------------------
 	//
@@ -203,7 +207,7 @@ class MyParser extends parser
             sto.setIsAddressable(false);
             sto.setIsModifiable(false);
         }
-        //assembly for init global/static var decl
+        //Assembly Writing: for init global/static var decl
         //should be the same as init for general global/static init
         if(m_symtab.getLevel() == 1 || (optstatic != null)){
             // set base and offset
@@ -251,7 +255,7 @@ class MyParser extends parser
                 int i;
 
                 if(typ instanceof FloatType){
-                    codegen.DoFloatAssign(sto, expr);
+                    codegen.DoFloatAssign(sto, expr, null);
                 }
                 else if(typ instanceof IntType){
                     i = exp.getIntValue();
@@ -269,7 +273,12 @@ class MyParser extends parser
             }
             //var init
             else{
-                codegen.DoVarAssign(sto, expr);
+                // Type promotion
+                if(sto.getType() instanceof FloatType){
+                }
+                else{
+                    codegen.DoVarAssign(sto, expr, null);
+                }
 
             }
 
@@ -723,23 +732,19 @@ class MyParser extends parser
                     } 
                     // var init
                     else{
-                        codegen.DoGlobalVarInitVar(sto, expr);
-                        codegen.increaseIndent();
-                        if(expr instanceof FuncSTO){
-                            codegen.DoFuncCallNoParam(expr);
-                        }
-                        
-                        if(codegen.assignA.isEmpty()){
-                            codegen.DoVarAssign(sto, expr);
-                        }
-                        else{
-                            for(int i = 0; i < codegen.assignA.size(); i++){
-                                codegen.DoVarAssign(codegen.assignA.get(i), codegen.assignB.get(i));
-                             }
-                             codegen.DoVarAssign(sto,expr);
+                        codegen.setholdOff(false);
 
-                         }
-                        codegen.decreaseIndent();
+                        // init func header
+                        codegen.DoGlobalVarInitVar(sto, expr);
+
+                        // write when the hold off is off
+                        codegen.TimeToWrite();
+
+
+                        codegen.DoVarAssign(sto,expr, null);
+
+
+                        // init func ender
                         codegen.initGlobalVarEnd(sto, expr);
 
                     }
@@ -761,17 +766,20 @@ class MyParser extends parser
 
                         if(typ instanceof FloatType){
                             if(expr.getType() instanceof IntType){
-                                //set left-hand side offset and base
-                            
-                                    offsetCnt ++;
-                                    int exo = -offsetCnt * expr.getType().getSize();
-                                    expr.setBase("%fp");
-                                    expr.setOffset(String.valueOf(exo));
+                                // do Type Promotion
+                                STO promote = new ExprSTO("temp");   
+                                offsetCnt ++;
+                                int exo = -offsetCnt * 4;
+                                promote.setBase("%fp");
+                                promote.setOffset(String.valueOf(exo));
+
+                                codegen.DoFloatAssign(sto, expr, promote);
                                 
                             }
-                            
-                            codegen.DoFloatAssign(sto, expr);
-                            
+                            else{
+                                // float to float
+                                codegen.DoFloatAssign(sto, expr, null);
+                            }
                         }
                         else if(typ instanceof IntType){
                             i = exp.getIntValue();
@@ -789,7 +797,7 @@ class MyParser extends parser
                     }
                     //var init
                     else{
-                        codegen.DoVarAssign(sto, expr);
+                        codegen.DoVarAssign(sto, expr, null);
 
                     }
                 }
@@ -971,20 +979,24 @@ class MyParser extends parser
                 int i;
 
                 if(t instanceof FloatType){
+                    // Type Promotion
                     if( constexpr.getType() instanceof IntType){
-                        //set left-hand side offset and base
+                        STO promote = new ExprSTO("temp");
                         offsetCnt ++;
-                        int exo = -offsetCnt * constexpr.getType().getSize();
-                        constexpr.setBase("%fp");
-                        constexpr.setOffset(String.valueOf(exo));
+                        int exo = -offsetCnt * 4;
+                        promote.setBase("%fp");
+                        promote.setOffset(String.valueOf(exo));
+
+                        codegen.DoFloatAssign(sto, constexpr, promote);
                     }
                     
                     if(exp.getLitTag()){
                         //treat non-lit const like var
-                        codegen.DoVarAssign(sto, constexpr);
+                        codegen.DoVarAssign(sto, constexpr, null);
                     }
                     else{
-                        codegen.DoFloatAssign(sto, constexpr);
+                        // float to float
+                        codegen.DoFloatAssign(sto, constexpr, null);
                     }
                 }
                 else if(t instanceof IntType){
@@ -1082,10 +1094,10 @@ class MyParser extends parser
 
            if(t instanceof FloatType){
                if(exp.getLitTag()){
-                   codegen.DoVarAssign(sto, expr);
+                   codegen.DoVarAssign(sto, expr, null);
                }
                else{
-                   codegen.DoFloatAssign(sto, expr);
+                   codegen.DoFloatAssign(sto, expr, null);
                }
            }
            else if(t instanceof IntType){
@@ -1539,17 +1551,34 @@ class MyParser extends parser
         }
 
 
-        // Assembly code for var assignment
+        // Assembly Writing: code for var assignment
+        // note this only takes place in local not global scope
         if(b instanceof ConstSTO){
-            System.out.println("Should not print");
+    
+            //float case
             if(a.getType() instanceof FloatType){
-                codegen.DoFloatAssign(a, b);
+                // type promotion
+                if(b.getType() instanceof IntType){
+                    STO promote = new ExprSTO("temp");
+                    offsetCnt++;
+                    int value = -offsetCnt*4;
+                    promote.setOffset(String.valueOf(value));
+                    promote.setBase("%fp");
+                    
+                    codegen.DoFloatAssign(a, b, promote);
+                        
+                }
+                else{
+                    codegen.DoFloatAssign(a, b, null);
+                }
             }
-            else if(a.getType() instanceof IntType){
+            //int case
+            else if(a.getType() instanceof IntType){ 
                 int val = ((ConstSTO)b).getIntValue();
                 String s = String.valueOf(val);
                 codegen.DoConstAssign(a, s, b.getName());
             }
+            //bool case
             else{
                 int val = ((ConstSTO)b).getBoolValue() ? 1 : 0;
                 String s = String.valueOf(val);
@@ -1557,21 +1586,32 @@ class MyParser extends parser
             }
         }
         else{
-            //if(m_symtab.getLevel() == 1){
+    
             if(this.GetSavedLineNum() != this.GetLineNum() || m_symtab.getLevel() != 1){
-                codegen.DoVarAssign(a, b);
+                codegen.setholdOff(false);
             }
             else{
-                System.out.println("Line1 : " + this.GetSavedLineNum());
-                System.out.println("Line2 : " + this.GetLineNum());
-
-                codegen.assignA.addElement(a);
-                codegen.assignB.addElement(b);
+                codegen.setholdOff(true);
             }
-            //}
-            //else{
-            //    codegen.DoVarAssign(a, b);
-            //}
+            
+            //Type promotion case
+            if(a.getType() instanceof FloatType && b.getType() instanceof IntType){
+                // This does nothing except holds offset and base 
+                STO promote = new ExprSTO("temp");
+                offsetCnt++;
+                int value = -offsetCnt*4;
+                promote.setOffset(String.valueOf(value));
+                promote.setBase("%fp");
+
+                codegen.DoVarAssign(a, b, promote);
+                  
+            }
+            else{
+                codegen.DoVarAssign(a, b, null);
+            }
+
+            
+            
         }
 
 
@@ -1675,9 +1715,17 @@ class MyParser extends parser
                          String offset = String.valueOf(val);
                          fun.setOffset(offset);
                          fun.setBase("%fp");
-                         if(m_symtab.getLevel() != 1 ){
-                             codegen.DoFuncCallNoParam(fun);
+
+                         if(this.GetSavedLineNum() != this.GetLineNum()){
+                             codegen.setholdOff(false);
                          }
+                         else{
+                             codegen.setholdOff(true);
+                         }
+                         System.out.println("ASS: " + codegen.getholdOff());
+                         codegen.DoFuncCallNoParam(fun);
+
+                         
                          
                      }
                      return fun;
@@ -2310,28 +2358,47 @@ class MyParser extends parser
         //Assembly writing: Cover all binary arithmetric for int  check: 1.4
         
         // check if both operands are Lit 
-        boolean aIsLit = false;
-        boolean bIsLit = false;
-        if(a instanceof ConstSTO && !((ConstSTO)a).getLitTag()){
-            aIsLit = true;
-        }
+        //boolean aIsLit = false;
+        //boolean bIsLit = false;
+        //if(a instanceof ConstSTO && !((ConstSTO)a).getLitTag()){
+        //    aIsLit = true;
+        //}
 
-        if(b instanceof ConstSTO && !((ConstSTO)b).getLitTag()){
-            bIsLit = true;
-        }
+        //if(b instanceof ConstSTO && !((ConstSTO)b).getLitTag()){
+        //     bIsLit = true;
+        //}
 
 
-        if(a.getType() instanceof IntType && b.getType() instanceof IntType){
-            if(!aIsLit || !bIsLit){
+            if((!(a instanceof ConstSTO)) || (!(b instanceof ConstSTO))){
+                
+                if(this.GetSavedLineNum() != this.GetLineNum() || m_symtab.getLevel() != 1){
+                    codegen.setholdOff(false);
+                }
+                else{
+                    codegen.setholdOff(true);
+                }
+            
                    
                 result.setBase("%fp");
                 offsetCnt++;
                 int val = -offsetCnt * result.getType().getSize();
                 String value = String.valueOf(val);
                 result.setOffset(value);
-                codegen.DoBinaryInt(a, b, o.getOp(), result);
+
+                if(a.getType() instanceof FloatType || b.getType() instanceof FloatType){
+                    if(a.getType() instanceof IntType){
+                       STO promote = new ExprSTO("temp"); 
+                    }
+                    else if(b.getType() instanceof IntType){
+                    }
+                    codegen.DoBinaryFloat(a, b, o.getOp(), result);
+                }
+                else{
+                    codegen.DoBinaryInt(a, b, o.getOp(), result);
+                }
             }
-        }
+
+        
 
 
         return result;
@@ -3255,6 +3322,7 @@ class MyParser extends parser
     //cout for assembly 
     //-----------------------------------------------------------------------
     void DoPrint(Vector<STO> printlist){
+        codegen.setholdOff(false);
         for(int i = 0; i < printlist.size(); i++){
             
             STO sto = printlist.get(i);
@@ -3268,6 +3336,7 @@ class MyParser extends parser
                     continue;
                 }
                 else{
+
                     codegen.printVar(sto, "%l7");
                 }
             }
@@ -3288,12 +3357,13 @@ class MyParser extends parser
                 }
             }
             else{
+
+                //codegen.setholdOff(false);
+                codegen.TimeToWrite();
                 codegen.printVar(sto, "%l7");
             }
 
 
-
-            //codegen.printConst(printlist.get(i));
         }
     
     }
