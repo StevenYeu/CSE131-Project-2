@@ -2967,15 +2967,15 @@ class MyParser extends parser
         if(des instanceof ErrorSTO)
             return des;
 
-        System.out.println(des.getOffset());
+
         STO sto = new ExprSTO(des.getName(),des.getType());
         if(s == "-"){
             if( des instanceof ConstSTO){
                 if(des.getType() instanceof IntType){
-                    sto = new ConstSTO("-" + des.getName(), des.getType(), -1*((ConstSTO)des).getIntValue());
+                    return new ConstSTO("-" + des.getName(), des.getType(), -1*((ConstSTO)des).getIntValue());
                 }
                 else if(des.getType() instanceof FloatType){
-                    sto = new ConstSTO("-" + des.getName(), des.getType(), -1.0*((ConstSTO)des).getFloatValue());
+                    return new ConstSTO("-" + des.getName(), des.getType(), -1.0*((ConstSTO)des).getFloatValue());
                 }
             }
             
@@ -2983,10 +2983,10 @@ class MyParser extends parser
         else{
             if( des instanceof ConstSTO){
                 if(des.getType() instanceof IntType){
-                    sto = new ConstSTO("+" + des.getName(), des.getType(), ((ConstSTO)des).getIntValue());
+                    return new ConstSTO("+" + des.getName(), des.getType(), ((ConstSTO)des).getIntValue());
                 }
                 else if(des.getType() instanceof FloatType){
-                    sto = new ConstSTO("+" + des.getName(), des.getType(), ((ConstSTO)des).getFloatValue());
+                    return new ConstSTO("+" + des.getName(), des.getType(), ((ConstSTO)des).getFloatValue());
                 }
             }
             
