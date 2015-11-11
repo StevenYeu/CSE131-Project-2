@@ -1683,7 +1683,7 @@ class MyParser extends parser
 
 
         result = new ExprSTO(a.getName() + "=" + b.getName(), a.getType());
-        if(m_symtab.getLevel() == 1){
+        if(a.getBase() == "%g0"){
             result.setBase("%g0");
             result.setOffset(a.getName());
         }
