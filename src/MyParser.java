@@ -2467,7 +2467,10 @@ class MyParser extends parser
                 String value = String.valueOf(val);
                 result.setOffset(value);
 
+                // float case
                 if(a.getType() instanceof FloatType || b.getType() instanceof FloatType){
+                    
+                    //type promotion
                     if(a.getType() instanceof IntType){
                        STO promote = new ExprSTO("temp");
                        offsetCnt ++;
@@ -2488,12 +2491,18 @@ class MyParser extends parser
                        codegen.DoBinaryFloat(a, null, b, promote, o.getOp(), result);
 
                     }
+                    //float to float
                     else{
                         codegen.DoBinaryFloat(a, null, b, null, o.getOp(), result);
                     }
                 }
-                else{
+                // int to int
+                else if (a.getType() instanceof IntType){
                     codegen.DoBinaryInt(a, b, o.getOp(), result);
+                }
+                // bool to bool
+                else{
+                    codegen.DoBinaryBool(a, b, o.getOp(), result);
                 }
             }
 

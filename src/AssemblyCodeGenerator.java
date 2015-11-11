@@ -95,6 +95,8 @@ public class AssemblyCodeGenerator {
     private int cmpCnt = 0;
     private int endIfCnt = 0;
 
+    private int andorCnt = 0;
+
     //branch label
     private Stack<Integer> blabel = new Stack<Integer>();
 
@@ -1421,12 +1423,19 @@ public class AssemblyCodeGenerator {
             this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(value), reg);
             this.decreaseIndent();
         }
-        else{
+        else if(sto.getType() instanceof FloatType){
             float value = con.getFloatValue();
-
             
             this.DoFloatRoData(sto, reg);
 
+        }
+        else {
+            int value = con.getBoolValue() ? 1 : 0;
+
+            // set  #, reg
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(value), reg);
+            this.decreaseIndent();
 
         }
 
@@ -1521,6 +1530,36 @@ public class AssemblyCodeGenerator {
         else if(op.equals(">")){
             cmpCnt++;
             this.DoCmp(BLE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+
+        }
+        else if(op.equals("<")){
+            cmpCnt++;
+            this.DoCmp(BGE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+
+        }
+        else if(op.equals("<=")){
+            cmpCnt++;
+            this.DoCmp(BG_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+
+        }
+        else if(op.equals(">=")){
+            cmpCnt++;
+            this.DoCmp(BL_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+
+        }
+        else if(op.equals("==")){
+            cmpCnt++;
+            this.DoCmp(BNE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+
+        }
+        else if(op.equals("!=")){
+            cmpCnt++;
+            this.DoCmp(BE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+
+        }
+        else if(op.equals("")){
+            cmpCnt++;
+            this.DoCmp(BE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
 
         }
 
@@ -1648,6 +1687,39 @@ public class AssemblyCodeGenerator {
             CmpReg = "%o0";
 
         }
+        else if(op.equals("<")){
+            cmpCnt++;
+            this.DoCmp(FBGE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+            CmpReg = "%o0";
+        }
+        else if(op.equals("<=")){
+            cmpCnt++;
+            this.DoCmp(FBG_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+
+            CmpReg = "%o0";
+        }
+        else if(op.equals(">=")){
+            cmpCnt++;
+            this.DoCmp(FBL_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+            CmpReg = "%o0";
+
+
+        }
+        else if(op.equals("==")){
+            cmpCnt++;
+            this.DoCmp(FBNE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+            CmpReg = "%o0";
+
+
+        }
+        else if(op.equals("!=")){
+            cmpCnt++;
+            this.DoCmp(FBE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+            CmpReg = "%o0";
+
+
+        }
+
 
  
         // set  result.offset, %o1
@@ -1667,6 +1739,126 @@ public class AssemblyCodeGenerator {
 
 
     }
+
+    // -------------------------------------------------------------------
+    // This handles all arithmetic expression for bool
+    // -------------------------------------------------------------------
+    public void DoBinaryBool(STO a, STO b, String op, STO result){
+
+        String s = "";
+
+        this.writeAssembly(NEWLINE);
+
+        // ! comment 
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! Short Circuit LHS");
+        this.decreaseIndent();
+
+
+        // check the first operand is Lit 
+        if(a instanceof ConstSTO && (!((ConstSTO)a).getLitTag())){
+           this.DoOperandLit(a, "%o0"); 
+            
+        }
+        else{
+            this.DoOperand(a, "%o0");
+        }
+
+
+        if(op.equals("&&")){
+            andorCnt++;
+            this.DoCmpBool(BE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
+            s = "0";
+
+        }
+        else if(op.equals("||")){
+            andorCnt++;
+            this.DoCmpBool(BNE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
+            s = "1";
+        }
+
+        this.writeAssembly(NEWLINE);
+
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! " +a.getName()+op+b.getName());
+        this.decreaseIndent();
+
+        this.writeAssembly(NEWLINE);
+
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! Short Circuit RHS");
+        this.decreaseIndent();
+
+
+        // check the second operand is Lit
+        if(b instanceof ConstSTO && (!((ConstSTO)b).getLitTag())){
+           this.DoOperandLit(b, "%o1"); 
+            
+        }
+        else{
+            this.DoOperand(b, "%o1");
+        }
+
+
+
+        if(op.equals("==")){
+            cmpCnt++;
+            this.DoCmp(BNE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+
+        }
+        else if(op.equals("!=")){
+            cmpCnt++;
+            this.DoCmp(BE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+
+        }
+        else if(op.equals("&&")){
+            this.DoCmpBool(BE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
+
+        }
+        else if(op.equals("||")){
+            this.DoCmpBool(BNE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
+        }
+
+        //ba     .$$.andorEnd.#
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, BA_OP, DOLLAR+"andorEnd."+String.valueOf(andorCnt));
+        this.decreaseIndent();
+
+        //.$$.andorSkip.#:
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, DOLLAR+"andorSkip."+String.valueOf(andorCnt)+":");
+        this.decreaseIndent();
+
+        // mov  s, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, MOV_OP, s, "%o0");
+        this.decreaseIndent();
+
+        //.$$.andorEnd.#:
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, DOLLAR+"andorEnd."+String.valueOf(andorCnt)+":");
+        this.decreaseIndent();
+
+
+
+        // set  result.offset, %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, result.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        // add  result.base, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, result.getBase(),"%o1", "%o1");
+        this.decreaseIndent();
+
+        // st    %o0, [%o1]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
+        this.decreaseIndent();
+    }
+
 
     //------------------------------------------------------------------
     // This should handle unary for both int and float
@@ -1906,6 +2098,27 @@ public class AssemblyCodeGenerator {
     
     }
 
+    //--------------------------------------------------------------------
+    // This handles cmp for bool
+    //--------------------------------------------------------------------
+    public void DoCmpBool(String op, String label) {
+        //cmp  %o0, %g0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, CMP_OP, "%o0", "%g0");
+        this.decreaseIndent();
+
+        // op  label
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, op, label);
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+
+    }
     // -------------------------------------------------------------------
     //
     // -------------------------------------------------------------------
@@ -2115,9 +2328,7 @@ public class AssemblyCodeGenerator {
         // .$$.endif.#:
         this.increaseIndent();
         this.writeAssembly(NO_PARAM, DOLLAR+"endif."+String.valueOf(val) + ":");
-        this.decreaseIndent(); 
-
-    
+        this.decreaseIndent();
     
     }
 
