@@ -159,6 +159,8 @@ public class AssemblyCodeGenerator {
     // for float
     private static final String FMUL_OP = "fmuls";
     private static final String FDIV_OP = "fdivs";
+
+    private static final String FMOV_OP = "fmovs";
     
 
 
@@ -1674,7 +1676,12 @@ public class AssemblyCodeGenerator {
 
         // neg/fneg reg, reg
         if(s == "+"){
-            this.writeAssembly(TWO_PARAM, MOV_OP, reg, reg);
+            if(sto.getType() instanceof IntType){
+                this.writeAssembly(TWO_PARAM, MOV_OP, reg, reg);
+            }
+            else{
+                this.writeAssembly(TWO_PARAM, FMOV_OP, reg, reg);
+            }
         }
         else{
             if(sto.getType() instanceof IntType){
@@ -1716,7 +1723,7 @@ public class AssemblyCodeGenerator {
 
 
     // -------------------------------------------------------------------
-    // This handles pre/post inc/dev only for int (don't know how different it is from float, etc)
+    // This handles pre/post inc/dev only for int 
     // -------------------------------------------------------------------
     public void DoPrePostInt(STO a, STO b, String op, STO result, String reg){
 
@@ -1787,7 +1794,7 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
 
-        this.DoOperand(a, "%o0");
+        this.DoOperand(a, "%f0");
         
         this.DoOperandLit(b, "%o1"); 
             
