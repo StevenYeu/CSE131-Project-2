@@ -137,7 +137,6 @@ public class AssemblyCodeGenerator {
     // cmp for float
     private static final String FCMP_OP = "fcmps";
 
-    private static final String BE_OP = "be";
     private static final String FITOS_OP = "fitos";
     private static final String FSTOI_OP = "fstoi";
 
@@ -160,7 +159,6 @@ public class AssemblyCodeGenerator {
     private static final String FMUL_OP = "fmuls";
     private static final String FDIV_OP = "fdivs";
 
-    private static final String FMOV_OP = "fmovs";
     
 
 
@@ -175,12 +173,31 @@ public class AssemblyCodeGenerator {
     private static final String LOAD_OP = "ld";
     private static final String EXIT_OP = "exit";
     private static final String STORE_OP = "st";
+    // for float
+    private static final String FMOV_OP = "fmovs";
+
     
     // cmp for if statement
     private static final String BA_OP = "ba";
     private static final String BLE_OP = "ble";
+    private static final String BE_OP = "be";
+    private static final String BNE_OP = "bne";
+    private static final String BL_OP = "bl";
+    private static final String BG_OP = "bg";
+    private static final String BGE_OP = "bge";
+
+
+
     private static final String INC_OP = "inc";
     private static final String DEC_OP = "dec";
+    // for float
+    private static final String FBLE_OP = "fble";
+    private static final String FBE_OP = "fbe";
+    private static final String FBNE_OP = "fbne";
+    private static final String FBL_OP = "fbl";
+    private static final String FBG_OP = "fbg";
+    private static final String FBGE_OP = "fbge";
+
     
 
     
@@ -1560,11 +1577,16 @@ public class AssemblyCodeGenerator {
     // -------------------------------------------------------------------
     public void DoBinaryFloat(STO a, STO promoteA, STO b, STO promoteB, String op, STO result){
 
+
+        // for cmp
+        String CmpReg = "%f0";
+
         // handles first operand reg
         String regA = "%f0";
         if(promoteA != null){
             regA = "%o0";
         }
+        // handles second operand reg
         String regB = "%f1";
         if(promoteB != null){
             regB = "%o1";
@@ -1622,7 +1644,8 @@ public class AssemblyCodeGenerator {
         }
         else if(op.equals(">")){
             cmpCnt++;
-            this.DoCmp(BLE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+            this.DoCmpFloat(FBLE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+            CmpReg = "%o0";
 
         }
 
@@ -1639,7 +1662,7 @@ public class AssemblyCodeGenerator {
 
         // st    %f0, [%o1]
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, STORE_OP, "%f0", "[%o1]");
+        this.writeAssembly(TWO_PARAM, STORE_OP, CmpReg, "[%o1]");
         this.decreaseIndent();
 
 
@@ -1859,7 +1882,7 @@ public class AssemblyCodeGenerator {
     public void DoCmp(String op, String label){
          // cmp  %o0, %o1
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, CMP_OP, "%o0", "%o1");
+        this.writeAssembly(TWO_PARAM,  CMP_OP, "%o0", "%o1");
         this.decreaseIndent();
 
         // op   label
@@ -1882,6 +1905,42 @@ public class AssemblyCodeGenerator {
 
     
     }
+
+    // -------------------------------------------------------------------
+    //
+    // -------------------------------------------------------------------
+    public void DoCmpFloat(String op, String label){
+         // cmp  %f0, %f1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM,  FCMP_OP, "%f0", "%f1");
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+        // op   label
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, op, label);
+        this.decreaseIndent();
+
+        // mov   %g0, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, MOV_OP, "%g0", "%o0");
+        this.decreaseIndent();
+
+        // inc   %o0
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, INC_OP, "%o0");
+        this.decreaseIndent();
+
+        // label:
+        this.writeAssembly(NO_PARAM, label+":");
+
+    
+    }
+
     // -------------------------------------------------------------------
     // This handles *, /, %, called in DoBinaryInt
     // -------------------------------------------------------------------
