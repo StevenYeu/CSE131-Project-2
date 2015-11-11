@@ -2564,7 +2564,10 @@ class MyParser extends parser
             STO b = new ConstSTO("1", new IntType("int"), 1);
             codegen.DoPrePostInt(a, b, s1, result, "%o2");
         }
-
+        else{
+            STO b = new ConstSTO("1", new IntType("int"), 1);
+            codegen.DoPrePostFloat(a, b, s1, result, "%f2");
+        }
 
         result.setIsAddressable(false);
         result.setIsModifiable(false);
@@ -2614,6 +2617,11 @@ class MyParser extends parser
             STO b = new ConstSTO("1", new IntType("int"), 1);
             codegen.DoPrePostInt(a, b, s1, result, "%o0");
         }
+        else{
+            STO b = new ConstSTO("1", new IntType("int"), 1);
+            codegen.DoPrePostFloat(a, b, s1, result, "%f0");
+        }
+
 
         result.setIsAddressable(false);
         result.setIsModifiable(false);

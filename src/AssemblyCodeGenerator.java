@@ -1795,16 +1795,17 @@ public class AssemblyCodeGenerator {
 
 
         this.DoOperand(a, "%f0");
-        
-        this.DoOperandLit(b, "%o1"); 
-            
+        this.DoFloatRoData(b, "%f1");
 
+        //this.DoOperandLit(b, "%o1"); 
+            
+        
 
         if(op.equals("++")){
-            this.DoPrimary(ADD_OP, "%o0", "%o1", "%o2");
+            this.DoPrimary(FADD_OP, "%f0", "%f1", "%f2");
         }
         else if(op.equals("--")){
-            this.DoPrimary(SUB_OP, "%o0", "%o1", "%o2");
+            this.DoPrimary(FSUB_OP, "%f0", "%f1", "%f2");
         }
  
         // set  result.offset, %o1
@@ -1817,7 +1818,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, result.getBase(),"%o1", "%o1");
         this.decreaseIndent();
 
-        // st    %o0, [%o1]
+        // st    reg, [%o1]
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, STORE_OP, reg, "[%o1]");
         this.decreaseIndent();
@@ -1827,14 +1828,14 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(TWO_PARAM, SET_OP, a.getOffset(), "%o1");
         this.decreaseIndent();
 
-        // add %fp, %o1, %o1
+        // add a.base, %o1, %o1
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, a.getBase(), "%o1", "%o1");
         this.decreaseIndent();
 
-        // st   %o2, [%o1]
+        // st   %f2, [%o1]
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, STORE_OP, "%o2", "[%o1]");
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%f2", "[%o1]");
         this.decreaseIndent();
        
 
