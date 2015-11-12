@@ -21,7 +21,7 @@ class NotOp extends UnaryOp {
             }
 
 
-            return new ExprSTO(a.getType().getName(), new BoolType("bool"));
+            return new ExprSTO("! "+ a.getName(), new BoolType("bool"));
         
         }
         

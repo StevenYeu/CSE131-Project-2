@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.Vector;
 import java.util.Stack;
+import java.util.LinkedList;
 
 /**
  * An Assembly Code Generator example emphasizing well thought design and
@@ -104,6 +105,10 @@ public class AssemblyCodeGenerator {
 
     // This is the hold off buffer that handles premature printing
     StringBuilder bufferStmt = new StringBuilder();
+    
+    // to print to buffer 
+    public LinkedList<StringBuilder> toWrite = new LinkedList<StringBuilder>();  
+    public Stack<StringBuilder> toLHS = new Stack<StringBuilder>();
 
     // 2
     private static final String ERROR_IO_CLOSE = 
@@ -294,8 +299,6 @@ public class AssemblyCodeGenerator {
         }
         // hold off
         else{
-
-
             for (int i=0; i < indent_level; i++) {
                 bufferStmt.append(SEPARATOR);
             }
@@ -303,8 +306,40 @@ public class AssemblyCodeGenerator {
         }
         
     }
+
+    public void addToBuffer(){
+       toWrite.add(bufferStmt);
+       bufferStmt = new StringBuilder();
+    }
+    public void popFromBuffer(){
+           if(toWrite.isEmpty()){return;}
+       
+           try {
+               fileWriter.write(toWrite.remove().toString());
+           } catch (IOException e) {
+               System.err.println(ERROR_IO_WRITE);
+               e.printStackTrace();
+           }
+       
+    }
+
+    public void addToStack(){
+        toLHS.push(bufferStmt);
+        bufferStmt = new StringBuilder();
+    }
+    public void popFromStack(){
+        if(toWrite.isEmpty()){return;}
+        try {
+           fileWriter.write(toWrite.pop().toString());
+        } catch (IOException e) {
+           System.err.println(ERROR_IO_WRITE);
+           e.printStackTrace();
+        }
+
+    }
     // This allows use to print the holdoff
     public void TimeToWrite(){
+
         try {
             fileWriter.write(bufferStmt.toString());
         } catch (IOException e) {
@@ -1741,11 +1776,10 @@ public class AssemblyCodeGenerator {
     }
 
     // -------------------------------------------------------------------
-    // This handles all arithmetic expression for bool
+    // This handles all arithmetic expression for bool LHS
     // -------------------------------------------------------------------
-    public void DoBinaryBool(STO a, STO b, String op, STO result){
+    public void DoBinaryBoolLHS(STO a, String op){
 
-        String s = "";
 
         this.writeAssembly(NEWLINE);
 
@@ -1768,20 +1802,27 @@ public class AssemblyCodeGenerator {
         if(op.equals("&&")){
             andorCnt++;
             this.DoCmpBool(BE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
-            s = "0";
+            
 
         }
         else if(op.equals("||")){
             andorCnt++;
             this.DoCmpBool(BNE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
-            s = "1";
+            
         }
+    }
+    // -------------------------------------------------------------------
+    // This handles all arithmetic expression for bool RHS
+    // -------------------------------------------------------------------
+    public void DoBinaryBoolRHS(STO b, String op, STO result){
+
+        String s = "";
 
         this.writeAssembly(NEWLINE);
 
         // ! comment
         this.increaseIndent();
-        this.writeAssembly(NO_PARAM, "! " +a.getName()+op+b.getName());
+        this.writeAssembly(NO_PARAM, "! " +result.getName());
         this.decreaseIndent();
 
         this.writeAssembly(NEWLINE);
@@ -1794,11 +1835,11 @@ public class AssemblyCodeGenerator {
 
         // check the second operand is Lit
         if(b instanceof ConstSTO && (!((ConstSTO)b).getLitTag())){
-           this.DoOperandLit(b, "%o1"); 
+           this.DoOperandLit(b, "%o0"); 
             
         }
         else{
-            this.DoOperand(b, "%o1");
+            this.DoOperand(b, "%o0");
         }
 
 
@@ -1815,10 +1856,12 @@ public class AssemblyCodeGenerator {
         }
         else if(op.equals("&&")){
             this.DoCmpBool(BE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
+            s = "0";
 
         }
         else if(op.equals("||")){
             this.DoCmpBool(BNE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
+            s = "1";
         }
 
         //ba     .$$.andorEnd.#
@@ -1898,13 +1941,18 @@ public class AssemblyCodeGenerator {
                 this.writeAssembly(TWO_PARAM, FMOV_OP, reg, reg);
             }
         }
-        else{
+        else if(s == "-"){
             if(sto.getType() instanceof IntType){
                 this.writeAssembly(TWO_PARAM, NEG_OP, reg, reg);
             }
             else {
                 this.writeAssembly(TWO_PARAM, FNEG_OP, reg, reg);
             }
+        }
+        // xor %o0, 1, %o0
+        else{
+            
+            this.writeAssembly(THREE_PARAM, XOR_OP, "%o0", String.valueOf(1), "%o0");
         }
         this.decreaseIndent();
 

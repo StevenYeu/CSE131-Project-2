@@ -15,6 +15,8 @@ abstract class STO
     public boolean flag = false; // check if parameter is by reference  or value
     private boolean thisTag = false;
     private boolean oTag = false;
+    private boolean notTag = false;
+    private boolean andTag = false;
     private String offset;
     private String base;
     private int value;
@@ -163,6 +165,23 @@ abstract class STO
     public void setVal(int i){
         value = i;
     }
+
+    public void setNotTag(boolean b) {
+        notTag = b;
+    }
+
+    public boolean getNotTag(){
+        return notTag;
+    }
+
+    public void setAndTag(boolean b){
+        andTag = b;
+    }
+
+    public boolean getAndTag(){
+        return andTag;
+    }
+
 
     
 

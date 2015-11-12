@@ -30,7 +30,7 @@ class MyParser extends parser
     private STO callingStruct; // used for funcall woth dot operator outisde of struct
     private boolean newCall = false; // new statement
     private AssemblyCodeGenerator codegen; 
-
+    private int andor = 0;
     // keep track of the offset
     private int offsetCnt = 0;
     // keep track of the line num
@@ -1765,23 +1765,24 @@ class MyParser extends parser
                   if(overParSize == 0 && parSize == 0) { // case if calling function has no params
                      STO result = new ExprSTO(fun.getName(),fun.getType());
                      if(fun.flag == true) { // return by ref set to Mod L
-                        fun.setIsModifiable(true);
-                        fun.setIsAddressable(true);
+                        result.setIsModifiable(true);
+                        result.setIsAddressable(true);
                      }
                      else { // if return by value set to R val
-                        fun.setIsModifiable(false);
-                        fun.setIsAddressable(false);
+                        result.setIsModifiable(false);
+                        result.setIsAddressable(false);
                      
                      }
                      if(((FuncSTO)fun).getReturnType() instanceof VoidType){
-                         codegen.DoFuncCallNoParamVoid(fun);
+;
+                         codegen.DoFuncCallNoParamVoid(result);
                      }
                      else{
                          offsetCnt ++;
                          int val = -offsetCnt * ((FuncSTO)fun).getReturnType().getSize();
                          String offset = String.valueOf(val);
-                         fun.setOffset(offset);
-                         fun.setBase("%fp");
+                         result.setOffset(offset);
+                         result.setBase("%fp");
 
                          if(this.GetSavedLineCnt() == 0){
                              this.SaveLineCnt();
@@ -1797,7 +1798,7 @@ class MyParser extends parser
                              codegen.setholdOff(true);
                          }
 
-                         codegen.DoFuncCallNoParam(fun);
+                         codegen.DoFuncCallNoParam(result);
 
                          
                          
@@ -2502,7 +2503,33 @@ class MyParser extends parser
                 }
                 // bool to bool
                 else{
-                    codegen.DoBinaryBool(a, b, o.getOp(), result);
+
+                    if(o.getOp().equals("&&")){
+                        result.setAndTag(true);
+                    }
+
+
+                    if(a.getNotTag()){
+                        codegen.popFromBuffer();
+                        a.setNotTag(false);
+                    }
+                    //if(a.getAndTag()){
+                    //    codegen.add
+                    //}
+                    codegen.DoBinaryBoolLHS(a, o.getOp());
+                    codegen.addToStack();
+                    
+                    //if(){
+                    //    codegen.popFromStack();
+                    ////}
+                   
+                    if(b.getNotTag()){
+                        codegen.popFromBuffer();
+                        a.setNotTag(false);
+                    }
+                    codegen.DoBinaryBoolRHS(b, o.getOp(), result);
+                   // codegen.addToStack();
+
                 }
             }
 
@@ -2513,7 +2540,7 @@ class MyParser extends parser
     }
 
     STO DoUnaryExpr(STO a, Operator o) {
-
+        
         if(a instanceof ErrorSTO) {
             return a;
         }
@@ -2529,7 +2556,36 @@ class MyParser extends parser
             result = new ErrorSTO("Error");
             
         }
+
+        offsetCnt ++;
+        int val = -offsetCnt * 4;
+        result.setOffset(String.valueOf(val));
+        result.setBase("%fp");
+   
+        if(this.GetSavedLineCnt() == 0){
+            this.SaveLineCnt(); 
+        }
+        if(this.GetSavedLineCnt() != this.GetLineNum()){
         
+            if(codegen.getholdOff()){
+                codegen.TimeToWrite();
+            }
+            this.SaveLineCnt();
+            codegen.setholdOff(false);
+        }
+        else{
+            codegen.setholdOff(true);
+
+        }
+
+        codegen.DoUnary(a, result, "%o0", o.getOp());
+        codegen.addToBuffer();
+        //if(  == 1) {
+          // codegen.popFromBuffer();
+        //}
+
+
+        result.setNotTag(true);
         return result;
     
     }
