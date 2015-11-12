@@ -1781,32 +1781,32 @@ public class AssemblyCodeGenerator {
         }
         else if(op.equals("<")){
             cmpCnt++;
-            this.DoCmp(FBGE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+            this.DoCmpFloat(FBGE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
             CmpReg = "%o0";
         }
         else if(op.equals("<=")){
             cmpCnt++;
-            this.DoCmp(FBG_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+            this.DoCmpFloat(FBG_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
 
             CmpReg = "%o0";
         }
         else if(op.equals(">=")){
             cmpCnt++;
-            this.DoCmp(FBL_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+            this.DoCmpFloat(FBL_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
             CmpReg = "%o0";
 
 
         }
         else if(op.equals("==")){
             cmpCnt++;
-            this.DoCmp(FBNE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+            this.DoCmpFloat(FBNE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
             CmpReg = "%o0";
 
 
         }
         else if(op.equals("!=")){
             cmpCnt++;
-            this.DoCmp(FBE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+            this.DoCmpFloat(FBE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
             CmpReg = "%o0";
 
 
@@ -1908,17 +1908,17 @@ public class AssemblyCodeGenerator {
 
 
 
-        if(op.equals("==")){
-            cmpCnt++;
-            this.DoCmp(BNE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+       // if(op.equals("==")){
+       //     cmpCnt++;
+       //     this.DoCmp(BNE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
 
-        }
-        else if(op.equals("!=")){
-            cmpCnt++;
-            this.DoCmp(BE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
+       // }
+       // else if(op.equals("!=")){
+       //     cmpCnt++;
+       //     this.DoCmp(BE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
 
-        }
-        else if(op.equals("&&")){
+        //}
+        if(op.equals("&&")){
             this.DoCmpBool(BE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
             s = "0";
             nots = "1";
