@@ -1765,24 +1765,24 @@ class MyParser extends parser
                   if(overParSize == 0 && parSize == 0) { // case if calling function has no params
                      STO result = new ExprSTO(fun.getName(),fun.getType());
                      if(fun.flag == true) { // return by ref set to Mod L
-                        result.setIsModifiable(true);
-                        result.setIsAddressable(true);
+                        fun.setIsModifiable(true);
+                        fun.setIsAddressable(true);
                      }
                      else { // if return by value set to R val
-                        result.setIsModifiable(false);
-                        result.setIsAddressable(false);
+                        fun.setIsModifiable(false);
+                        fun.setIsAddressable(false);
                      
                      }
                      if(((FuncSTO)fun).getReturnType() instanceof VoidType){
 ;
-                         codegen.DoFuncCallNoParamVoid(result);
+                         codegen.DoFuncCallNoParamVoid(fun);
                      }
                      else{
                          offsetCnt ++;
                          int val = -offsetCnt * ((FuncSTO)fun).getReturnType().getSize();
                          String offset = String.valueOf(val);
-                         result.setOffset(offset);
-                         result.setBase("%fp");
+                         fun.setOffset(offset);
+                         fun.setBase("%fp");
 
                          if(this.GetSavedLineCnt() == 0){
                              this.SaveLineCnt();
@@ -1798,7 +1798,7 @@ class MyParser extends parser
                              codegen.setholdOff(true);
                          }
 
-                         codegen.DoFuncCallNoParam(result);
+                         codegen.DoFuncCallNoParam(fun);
 
                          
                          
@@ -2502,43 +2502,68 @@ class MyParser extends parser
                     codegen.DoBinaryInt(a, b, o.getOp(), result);
                 }
                 // bool to bool
+                else if(a.getType() instanceof BoolType && o.getOp().equals("==")){
+                    result.setAndTag(true);
+                    codegen.DoBinaryInt(a, b, o.getOp(), result);
+                }
+                else if(a.getType() instanceof BoolType && o.getOp().equals("!=")){
+                    result.setAndTag(true);
+                    codegen.DoBinaryInt(a, b, o.getOp(), result);
+                }
                 else{
 
-                    if(o.getOp().equals("&&")){
-                        result.setAndTag(true);
-                    }
+                    result.setAndTag(true);
+
+                    if(b.getAndTag()){
+                        codegen.setholdOff(false);
+                        if(a.getNotTag()){
+                            codegen.popToAssembly();
+                            a.setNotTag(false);
+                        }
+                        
+                        codegen.DoBinaryBoolLHS(a, o.getOp());
+                        codegen.setholdOff(true);
+                        b.setAndTag(false);
+                        codegen.writeLHSOp();
+                        codegen.writeRHSOp();
+                        codegen.TimeToWrite();
 
 
-                    if(a.getNotTag()){
-                        codegen.popFromBuffer();
-                        a.setNotTag(false);
+
+                        codegen.setholdOff(false);
+                        if(b.getNotTag()){
+                            codegen.popToAssembly();
+                            b.setNotTag(false);
+                        }
+                        codegen.DoBinaryBoolRHS(b, o.getOp(),result);
+                        codegen.setholdOff(true);
+
+
+
                     }
-                    //if(a.getAndTag()){
-                    //    codegen.add
-                    //}
-                    codegen.DoBinaryBoolLHS(a, o.getOp());
-                    codegen.addToStack();
-                    
-                    //if(){
-                    //    codegen.popFromStack();
-                    ////}
-                   
-                    if(b.getNotTag()){
-                        codegen.popFromBuffer();
-                        a.setNotTag(false);
-                    }
-                    codegen.DoBinaryBoolRHS(b, o.getOp(), result);
-                   // codegen.addToStack();
+                    else{
+                       // codegen.DoBinaryBoolLHS(a, o.getOp());
+                        codegen.storeLHSOp(a,o.getOp());
+
+
+                     //   codegen.DoBinaryBoolRHS(b, o.getOp(), result);
+                        codegen.storeRHSOp(b,result,o.getOp());
+
+
+                    }          
 
                 }
             }
 
         
-
-
         return result;
     }
 
+    void DoBoolWrite(){
+        codegen.writeLHSOp();
+        codegen.writeRHSOp();
+        codegen.popAllToBuffer();
+    }
     STO DoUnaryExpr(STO a, Operator o) {
         
         if(a instanceof ErrorSTO) {
@@ -2562,30 +2587,27 @@ class MyParser extends parser
         result.setOffset(String.valueOf(val));
         result.setBase("%fp");
    
-        if(this.GetSavedLineCnt() == 0){
-            this.SaveLineCnt(); 
-        }
-        if(this.GetSavedLineCnt() != this.GetLineNum()){
-        
-            if(codegen.getholdOff()){
-                codegen.TimeToWrite();
+        if(!(a instanceof ConstSTO)){
+            if(this.GetSavedLineCnt() == 0){
+                this.SaveLineCnt(); 
             }
-            this.SaveLineCnt();
-            codegen.setholdOff(false);
+            if(this.GetSavedLineCnt() != this.GetLineNum()){
+        
+                if(codegen.getholdOff()){
+                    codegen.TimeToWrite();
+                }
+                this.SaveLineCnt();
+                codegen.setholdOff(false);
+            }
+            else{
+                codegen.setholdOff(true);
+
+            }
+            codegen.DoUnary(a, result, "%o0", o.getOp());
+            codegen.addToBuffer();
+
+            result.setNotTag(true);
         }
-        else{
-            codegen.setholdOff(true);
-
-        }
-
-        codegen.DoUnary(a, result, "%o0", o.getOp());
-        codegen.addToBuffer();
-        //if(  == 1) {
-          // codegen.popFromBuffer();
-        //}
-
-
-        result.setNotTag(true);
         return result;
     
     }
@@ -3577,6 +3599,12 @@ class MyParser extends parser
             codegen.printVar(sto, "%l7");
         }
    
+    }
+
+    // cin for assembly
+    void DoCin(STO sto){
+    
+        codegen.DoCin(sto);
     }
 
 

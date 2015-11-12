@@ -98,17 +98,26 @@ public class AssemblyCodeGenerator {
 
     private int andorCnt = 0;
 
+    private int andorCntRHS = 0;
+
     //branch label
     private Stack<Integer> blabel = new Stack<Integer>();
 
     private boolean holdOff = false;
+
+    private Vector<STO> LHSparams = new Vector<STO>();
+    private Vector<String> LHSops = new Vector<String>();
+    private Vector<STO> RHSparams = new Vector<STO>();
+    private Vector<String> RHSops = new Vector<String>();
+    private Vector<STO> result = new Vector<STO>();
+
 
     // This is the hold off buffer that handles premature printing
     StringBuilder bufferStmt = new StringBuilder();
     
     // to print to buffer 
     public LinkedList<StringBuilder> toWrite = new LinkedList<StringBuilder>();  
-    public Stack<StringBuilder> toLHS = new Stack<StringBuilder>();
+
 
     // 2
     private static final String ERROR_IO_CLOSE = 
@@ -314,29 +323,77 @@ public class AssemblyCodeGenerator {
     public void popFromBuffer(){
            if(toWrite.isEmpty()){return;}
        
-           try {
-               fileWriter.write(toWrite.remove().toString());
-           } catch (IOException e) {
-               System.err.println(ERROR_IO_WRITE);
-               e.printStackTrace();
-           }
+           bufferStmt.append(toWrite.remove().toString());
        
     }
 
-    public void addToStack(){
-        toLHS.push(bufferStmt);
-        bufferStmt = new StringBuilder();
-    }
-    public void popFromStack(){
+
+    public void popAllToBuffer(){
         if(toWrite.isEmpty()){return;}
-        try {
-           fileWriter.write(toWrite.pop().toString());
-        } catch (IOException e) {
-           System.err.println(ERROR_IO_WRITE);
-           e.printStackTrace();
+
+        while(!(toWrite.isEmpty())){
+
+            bufferStmt.append(toWrite.remove().toString());
+
         }
 
     }
+
+    public void popToAssembly(){
+        if(toWrite.isEmpty()){return;}
+        try {
+            fileWriter.write(toWrite.remove().toString());
+        } catch (IOException e) {
+            System.err.println(ERROR_IO_WRITE);
+            e.printStackTrace();
+        }
+
+
+    }
+
+
+    public void storeLHSOp(STO exp, String op) {
+       LHSparams.addElement(exp);
+       LHSops.addElement(op);
+    }
+
+    public void writeLHSOp() {
+       if(LHSparams.isEmpty()){return;}
+       for(int i=0; i< LHSparams.size();i++) {
+          if(LHSparams.get(i).getNotTag()){
+               this.popFromBuffer();
+               LHSparams.get(i).setNotTag(false);
+          }
+          this.DoBinaryBoolLHS(LHSparams.get(i),LHSops.get(i));
+       }
+       LHSparams.clear();
+       LHSops.clear();
+    }
+
+
+    public void storeRHSOp(STO exp, STO res, String op) {
+       RHSparams.addElement(exp);
+       result.addElement(res);
+       RHSops.addElement(op);
+    }
+
+    public void writeRHSOp() {
+       if(RHSparams.isEmpty()){return;}
+
+       for(int i=0;i<RHSops.size() ;i++) {
+          if(RHSparams.get(i).getNotTag()){
+               this.popFromBuffer();
+               RHSparams.get(i).setNotTag(false);
+          }
+          this.DoBinaryBoolRHS(RHSparams.get(i),RHSops.get(i),result.get(i));
+
+       }
+       RHSparams.clear();
+       RHSops.clear();
+       result.clear();
+    
+    }
+
     // This allows use to print the holdoff
     public void TimeToWrite(){
 
@@ -1810,14 +1867,21 @@ public class AssemblyCodeGenerator {
             this.DoCmpBool(BNE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
             
         }
+        andorCntRHS = andorCnt; 
     }
+
+
+
+
+
+
     // -------------------------------------------------------------------
     // This handles all arithmetic expression for bool RHS
     // -------------------------------------------------------------------
     public void DoBinaryBoolRHS(STO b, String op, STO result){
 
         String s = "";
-
+        String nots = "";
         this.writeAssembly(NEWLINE);
 
         // ! comment
@@ -1857,22 +1921,29 @@ public class AssemblyCodeGenerator {
         else if(op.equals("&&")){
             this.DoCmpBool(BE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
             s = "0";
+            nots = "1";
 
         }
         else if(op.equals("||")){
             this.DoCmpBool(BNE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
             s = "1";
+            nots = "0";
         }
 
         //ba     .$$.andorEnd.#
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, BA_OP, DOLLAR+"andorEnd."+String.valueOf(andorCnt));
+        this.writeAssembly(ONE_PARAM, BA_OP, DOLLAR+"andorEnd."+String.valueOf(andorCntRHS));
+        this.decreaseIndent();
+
+        // move #, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, MOV_OP, nots, "%o0");
         this.decreaseIndent();
 
         //.$$.andorSkip.#:
-        this.increaseIndent();
-        this.writeAssembly(NO_PARAM, DOLLAR+"andorSkip."+String.valueOf(andorCnt)+":");
-        this.decreaseIndent();
+        
+        this.writeAssembly(NO_PARAM, DOLLAR+"andorSkip."+String.valueOf(andorCntRHS)+":");
+        
 
         // mov  s, %o0
         this.increaseIndent();
@@ -1880,10 +1951,10 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
         //.$$.andorEnd.#:
-        this.increaseIndent();
-        this.writeAssembly(NO_PARAM, DOLLAR+"andorEnd."+String.valueOf(andorCnt)+":");
-        this.decreaseIndent();
-
+        
+        this.writeAssembly(NO_PARAM, DOLLAR+"andorEnd."+String.valueOf(andorCntRHS)+":");
+        
+        andorCntRHS--;
 
 
         // set  result.offset, %o1
@@ -2575,6 +2646,57 @@ public class AssemblyCodeGenerator {
 
     }
 
+    // -----------------------------------------------------------------------------------
+    //  This handles cin
+    // -----------------------------------------------------------------------------------
+    public void DoCin(STO expr){
+        this.writeAssembly(NEWLINE);
+
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! cin >>"+ expr.getName()); 
+        this.decreaseIndent();
+
+        //call inputInt or inputFloat
+        this.increaseIndent();
+        if(expr.getType() instanceof IntType){
+            this.writeAssembly(ONE_PARAM, CALL_OP, "inputInt"); 
+        }
+        else{
+            this.writeAssembly(ONE_PARAM, CALL_OP, "inputFloat");
+        }
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+        // set  offset, %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, expr.getOffset(), "%o1"); 
+        this.decreaseIndent();
+
+        // add  base, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(), "%o1", "%o1");
+        this.decreaseIndent();
+
+        // st   %o0/%f0, [%o1]
+        this.increaseIndent();
+        if(expr.getType() instanceof IntType){
+            this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]"); 
+        }
+        else{
+            this.writeAssembly(TWO_PARAM, STORE_OP, "%f0", "[%o1]");
+        }
+        this.decreaseIndent();
+
+
+
+
+
+    }
 
 
 
