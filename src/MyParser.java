@@ -1674,6 +1674,7 @@ class MyParser extends parser
                   
             }
             else{
+                System.out.println("B "+ b.getName());
                 codegen.DoVarAssign(a, b, null);
             }
 
@@ -2510,8 +2511,8 @@ class MyParser extends parser
                     result.setAndTag(true);
                     codegen.DoBinaryInt(a, b, o.getOp(), result);
                 }
-                else{
-
+              //  else{
+/*
                     result.setAndTag(true);
 
                     if(b.getAndTag()){
@@ -2524,6 +2525,7 @@ class MyParser extends parser
                         codegen.DoBinaryBoolLHS(a, o.getOp());
                         codegen.setholdOff(true);
                         b.setAndTag(false);
+
                         codegen.writeLHSOp();
                         codegen.writeRHSOp();
                         codegen.TimeToWrite();
@@ -2542,27 +2544,47 @@ class MyParser extends parser
 
                     }
                     else{
-                       // codegen.DoBinaryBoolLHS(a, o.getOp());
+                        System.out.println("IN");
+                        codegen.DoBinaryBoolLHS(a, o.getOp());
                         codegen.storeLHSOp(a,o.getOp());
 
 
-                     //   codegen.DoBinaryBoolRHS(b, o.getOp(), result);
+                        codegen.DoBinaryBoolRHS(b, o.getOp(), result);
                         codegen.storeRHSOp(b,result,o.getOp());
 
 
                     }          
+*/
 
-                }
+        //        }
             }
 
         
         return result;
     }
 
+    void DoLHS(STO sto, String op){
+
+        codegen.TimeToWrite();
+        codegen.DoBinaryBoolLHS(sto, op);
+        
+
+    }
+    void DoRHS(STO a, STO b, String op, STO result){
+
+       codegen.TimeToWrite();
+       codegen.DoBinaryBoolRHS(a, b, op, result);
+
+
+    }
+
     void DoBoolWrite(){
-        codegen.writeLHSOp();
-        codegen.writeRHSOp();
-        codegen.popAllToBuffer();
+
+    //    codegen.writeLHSOp();
+    //    codegen.writeRHSOp();
+        codegen.TimeToWrite();
+        codegen.setholdOff(false);
+    //    codegen.popAllToBuffer();
     }
     STO DoUnaryExpr(STO a, Operator o) {
         

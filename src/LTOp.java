@@ -29,27 +29,27 @@ class LTOp extends ComparisonOp {
                         return new ConstSTO("false", new BoolType("bool"),0);
                 }
                 else if(a.getType() instanceof FloatType && b.getType() instanceof FloatType) {
-                    if (((ConstSTO)a).getIntValue() < ((ConstSTO)b).getIntValue())
+                    if (((ConstSTO)a).getFloatValue() < ((ConstSTO)b).getFloatValue())
                         return new ConstSTO("true", new BoolType("bool"),1);
                     else
                         return new ConstSTO("false", new BoolType("bool"),0);
  
                 }
                 else if(a.getType() instanceof FloatType && b.getType() instanceof IntType) {
-                   if (((ConstSTO)a).getIntValue() < ((ConstSTO)b).getIntValue())
+                   if (((ConstSTO)a).getFloatValue() < ((ConstSTO)b).getIntValue())
                         return new ConstSTO("true", new BoolType("bool"),1);
                     else
                         return new ConstSTO("false", new BoolType("bool"),0);
                 }
                 else{
-                    if (((ConstSTO)a).getIntValue() < ((ConstSTO)b).getIntValue())
+                    if (((ConstSTO)a).getIntValue() < ((ConstSTO)b).getFloatValue())
                         return new ConstSTO("true", new BoolType("bool"),1);
                     else
                         return new ConstSTO("false", new BoolType("bool"),0);
                 }
 
             }
-            return new ExprSTO(a.getName(), new BoolType("bool")); 
+            return new ExprSTO(a.getName()+"<"+b.getName(), new BoolType("bool")); 
         }
         
         return new ErrorSTO(a.getName());

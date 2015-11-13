@@ -359,6 +359,7 @@ public class AssemblyCodeGenerator {
 
     public void writeLHSOp() {
        if(LHSparams.isEmpty()){return;}
+       System.out.println("WriteAssem");
        for(int i=0; i< LHSparams.size();i++) {
           if(LHSparams.get(i).getNotTag()){
                this.popFromBuffer();
@@ -385,7 +386,7 @@ public class AssemblyCodeGenerator {
                this.popFromBuffer();
                RHSparams.get(i).setNotTag(false);
           }
-          this.DoBinaryBoolRHS(RHSparams.get(i),RHSops.get(i),result.get(i));
+          //this.DoBinaryBoolRHS(RHSparams.get(i),RHSops.get(i),result.get(i));
 
        }
        RHSparams.clear();
@@ -1867,7 +1868,7 @@ public class AssemblyCodeGenerator {
             this.DoCmpBool(BNE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
             
         }
-        andorCntRHS = andorCnt; 
+        //andorCntRHS = andorCnt; 
     }
 
 
@@ -1878,7 +1879,7 @@ public class AssemblyCodeGenerator {
     // -------------------------------------------------------------------
     // This handles all arithmetic expression for bool RHS
     // -------------------------------------------------------------------
-    public void DoBinaryBoolRHS(STO b, String op, STO result){
+    public void DoBinaryBoolRHS(STO a, STO b, String op, STO result){
 
         String s = "";
         String nots = "";
@@ -1907,17 +1908,6 @@ public class AssemblyCodeGenerator {
         }
 
 
-
-       // if(op.equals("==")){
-       //     cmpCnt++;
-       //     this.DoCmp(BNE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
-
-       // }
-       // else if(op.equals("!=")){
-       //     cmpCnt++;
-       //     this.DoCmp(BE_OP, DOLLAR+"cmp."+String.valueOf(cmpCnt));
-
-        //}
         if(op.equals("&&")){
             this.DoCmpBool(BE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
             s = "0";
@@ -1932,7 +1922,7 @@ public class AssemblyCodeGenerator {
 
         //ba     .$$.andorEnd.#
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, BA_OP, DOLLAR+"andorEnd."+String.valueOf(andorCntRHS));
+        this.writeAssembly(ONE_PARAM, BA_OP, DOLLAR+"andorEnd."+String.valueOf(andorCnt));
         this.decreaseIndent();
 
         // move #, %o0
@@ -1942,7 +1932,7 @@ public class AssemblyCodeGenerator {
 
         //.$$.andorSkip.#:
         
-        this.writeAssembly(NO_PARAM, DOLLAR+"andorSkip."+String.valueOf(andorCntRHS)+":");
+        this.writeAssembly(NO_PARAM, DOLLAR+"andorSkip."+String.valueOf(andorCnt)+":");
         
 
         // mov  s, %o0
@@ -1952,25 +1942,26 @@ public class AssemblyCodeGenerator {
 
         //.$$.andorEnd.#:
         
-        this.writeAssembly(NO_PARAM, DOLLAR+"andorEnd."+String.valueOf(andorCntRHS)+":");
+        this.writeAssembly(NO_PARAM, DOLLAR+"andorEnd."+String.valueOf(andorCnt)+":");
         
-        andorCntRHS--;
+        //andorCnt--;
+        if((!(a instanceof ConstSTO)) || (!(b instanceof ConstSTO))){
+        
+            // set  result.offset, %o1
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, SET_OP, result.getOffset(), "%o1");
+            this.decreaseIndent();
 
+            // add  result.base, %o1, %o1
+            this.increaseIndent();
+            this.writeAssembly(THREE_PARAM, ADD_OP, result.getBase(),"%o1", "%o1");
+            this.decreaseIndent();
 
-        // set  result.offset, %o1
-        this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, SET_OP, result.getOffset(), "%o1");
-        this.decreaseIndent();
-
-        // add  result.base, %o1, %o1
-        this.increaseIndent();
-        this.writeAssembly(THREE_PARAM, ADD_OP, result.getBase(),"%o1", "%o1");
-        this.decreaseIndent();
-
-        // st    %o0, [%o1]
-        this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
-        this.decreaseIndent();
+            // st    %o0, [%o1]
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
+            this.decreaseIndent();
+        }
     }
 
 
@@ -2337,6 +2328,51 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
 			 
     }
+
+    // ----------------------------------------------------------------
+    // This handles the while case with only literal as conditon
+    // ----------------------------------------------------------------
+    public void DoWhileLitCond(STO sto){
+
+
+        int val = ((ConstSTO)sto).getBoolValue() ? 1: 0;
+
+        this.writeAssembly(NEWLINE);
+        //! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! while( ... )");
+        this.decreaseIndent();
+
+        // .$$. loop
+
+        // set    val  %o0 
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(val), "%o0");
+        this.decreaseIndent();
+
+        // cmp     %o0, %g0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, CMP_OP, "%o0", "%g0");
+        this.decreaseIndent();   
+
+
+        // be      .$$.else.# 
+        this.increaseIndent();
+        endIfCnt++;
+        this.writeAssembly(ONE_PARAM, BE_OP, DOLLAR+"else."+ String.valueOf(endIfCnt));
+        blabel.push(endIfCnt);
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();   
+
+        //pure formatting indentation
+        this.increaseIndent();
+			 
+    }
+
     
     // ----------------------------------------------------------------
     // This handles the if case with only literal as conditon
