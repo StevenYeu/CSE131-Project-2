@@ -98,26 +98,20 @@ public class AssemblyCodeGenerator {
 
     private int andorCnt = 0;
 
-    private int andorCntRHS = 0;
+    private int loopCnt = 0;
+
+    // while loop branch label
+    private Stack<Integer> wlabel = new Stack<Integer>();
 
     //branch label
     private Stack<Integer> blabel = new Stack<Integer>();
 
     private boolean holdOff = false;
 
-    private Vector<STO> LHSparams = new Vector<STO>();
-    private Vector<String> LHSops = new Vector<String>();
-    private Vector<STO> RHSparams = new Vector<STO>();
-    private Vector<String> RHSops = new Vector<String>();
-    private Vector<STO> result = new Vector<STO>();
-
 
     // This is the hold off buffer that handles premature printing
     StringBuilder bufferStmt = new StringBuilder();
     
-    // to print to buffer 
-    public LinkedList<StringBuilder> toWrite = new LinkedList<StringBuilder>();  
-
 
     // 2
     private static final String ERROR_IO_CLOSE = 
@@ -316,84 +310,6 @@ public class AssemblyCodeGenerator {
         
     }
 
-    public void addToBuffer(){
-       toWrite.add(bufferStmt);
-       bufferStmt = new StringBuilder();
-    }
-    public void popFromBuffer(){
-           if(toWrite.isEmpty()){return;}
-       
-           bufferStmt.append(toWrite.remove().toString());
-       
-    }
-
-
-    public void popAllToBuffer(){
-        if(toWrite.isEmpty()){return;}
-
-        while(!(toWrite.isEmpty())){
-
-            bufferStmt.append(toWrite.remove().toString());
-
-        }
-
-    }
-
-    public void popToAssembly(){
-        if(toWrite.isEmpty()){return;}
-        try {
-            fileWriter.write(toWrite.remove().toString());
-        } catch (IOException e) {
-            System.err.println(ERROR_IO_WRITE);
-            e.printStackTrace();
-        }
-
-
-    }
-
-
-    public void storeLHSOp(STO exp, String op) {
-       LHSparams.addElement(exp);
-       LHSops.addElement(op);
-    }
-
-    public void writeLHSOp() {
-       if(LHSparams.isEmpty()){return;}
-       System.out.println("WriteAssem");
-       for(int i=0; i< LHSparams.size();i++) {
-          if(LHSparams.get(i).getNotTag()){
-               this.popFromBuffer();
-               LHSparams.get(i).setNotTag(false);
-          }
-          this.DoBinaryBoolLHS(LHSparams.get(i),LHSops.get(i));
-       }
-       LHSparams.clear();
-       LHSops.clear();
-    }
-
-
-    public void storeRHSOp(STO exp, STO res, String op) {
-       RHSparams.addElement(exp);
-       result.addElement(res);
-       RHSops.addElement(op);
-    }
-
-    public void writeRHSOp() {
-       if(RHSparams.isEmpty()){return;}
-
-       for(int i=0;i<RHSops.size() ;i++) {
-          if(RHSparams.get(i).getNotTag()){
-               this.popFromBuffer();
-               RHSparams.get(i).setNotTag(false);
-          }
-          //this.DoBinaryBoolRHS(RHSparams.get(i),RHSops.get(i),result.get(i));
-
-       }
-       RHSparams.clear();
-       RHSops.clear();
-       result.clear();
-    
-    }
 
     // This allows use to print the holdoff
     public void TimeToWrite(){
@@ -1868,7 +1784,7 @@ public class AssemblyCodeGenerator {
             this.DoCmpBool(BNE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
             
         }
-        //andorCntRHS = andorCnt; 
+
     }
 
 
@@ -1944,7 +1860,7 @@ public class AssemblyCodeGenerator {
         
         this.writeAssembly(NO_PARAM, DOLLAR+"andorEnd."+String.valueOf(andorCnt)+":");
         
-        //andorCnt--;
+
         if((!(a instanceof ConstSTO)) || (!(b instanceof ConstSTO))){
         
             // set  result.offset, %o1
@@ -2033,13 +1949,6 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, STORE_OP, reg, "[%o1]");
         this.decreaseIndent();
-
-
-
-
-
-
-
 
 
     }
@@ -2338,12 +2247,11 @@ public class AssemblyCodeGenerator {
         int val = ((ConstSTO)sto).getBoolValue() ? 1: 0;
 
         this.writeAssembly(NEWLINE);
+
         //! comment
         this.increaseIndent();
-        this.writeAssembly(NO_PARAM, "! while( ... )");
+        this.writeAssembly(NO_PARAM, "! Check loop condition");
         this.decreaseIndent();
-
-        // .$$. loop
 
         // set    val  %o0 
         this.increaseIndent();
@@ -2356,11 +2264,9 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();   
 
 
-        // be      .$$.else.# 
+        // be      .$$.loopCheck.# 
         this.increaseIndent();
-        endIfCnt++;
-        this.writeAssembly(ONE_PARAM, BE_OP, DOLLAR+"else."+ String.valueOf(endIfCnt));
-        blabel.push(endIfCnt);
+        this.writeAssembly(ONE_PARAM, BE_OP, DOLLAR+"loopCheck."+ String.valueOf(loopCnt));
         this.decreaseIndent();
 
         // nop
@@ -2395,10 +2301,11 @@ public class AssemblyCodeGenerator {
         //add     base, %l7, %l7
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%l7", "%l7");
+        this.decreaseIndent();
 
-        // ld      [%l7], %g0
+        // ld      [%l7], %o0    (This was %g0 before, should be wrong, don't know it's not caught -- change to %o0 in Nov.13 12:21)
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%g0");
+        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o0");
         this.decreaseIndent(); 
 
         // cmp     %o0, %g0
@@ -2421,6 +2328,136 @@ public class AssemblyCodeGenerator {
 
         //pure formatting indentation
         this.increaseIndent();
+    }
+
+    // ----------------------------------------------------------------
+    // This handles the while case with only literal as conditon
+    // ----------------------------------------------------------------
+
+    public void DoWhileOpenLoop(){
+
+        this.writeAssembly(NEWLINE);
+
+        //! comment 
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! while( ... )");
+        this.decreaseIndent();
+
+        // .$$. loopCheck.#.:
+        loopCnt++;
+        wlabel.push(loopCnt);
+        this.writeAssembly(NO_PARAM, DOLLAR+"loopCheck."+String.valueOf(loopCnt)+":");
+
+    }
+
+    public void DoWhileExprCond(STO sto){
+
+        this.writeAssembly(NEWLINE);
+
+        //! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! Check loop condition");
+        this.decreaseIndent();
+
+
+        // set    offset  %l7 
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), "%l7");
+        this.decreaseIndent();
+
+        //add     base, %l7, %l7
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%l7", "%l7");
+        this.decreaseIndent();
+
+        // ld      [%l7], %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o0");
+        this.decreaseIndent(); 
+
+        // cmp     %o0, %g0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, CMP_OP, "%o0", "%g0");
+        this.decreaseIndent();   
+
+
+        // be      .$$.loopEnd.# 
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, BE_OP, DOLLAR+"loopEnd."+ String.valueOf(loopCnt));
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent(); 
+
+        //pure formatting indentation
+        this.increaseIndent();
+
+        this.writeAssembly(NEWLINE);
+
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! Start of loop body");
+        this.decreaseIndent();
+    }
+
+    // -----------------------------------------------------------------------
+    //
+    // -----------------------------------------------------------------------
+    public void DoWhileCloseLoop(){
+
+        int val = wlabel.pop();
+
+        this.writeAssembly(NEWLINE);
+
+        // for pure formatting
+        this.decreaseIndent();
+
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! End of loop body" );
+        this.decreaseIndent();
+
+        // ba     .$$.loopCheck.#
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, BA_OP, DOLLAR+ "loopCheck."+String.valueOf(val));
+        this.decreaseIndent();
+
+        //nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+        //.$$.loopEnd.#:
+        this.writeAssembly(NO_PARAM, DOLLAR+ "loopEnd."+String.valueOf(val)+":");
+
+
+
+    }
+
+    // --------------------------------------------------------------
+    // handles break statement
+    // --------------------------------------------------------------
+    public void DoBreak(){
+
+        int val = wlabel.peek();
+
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! break" );
+        this.decreaseIndent();
+
+        // ba     .$$.loopCheck.#
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, BA_OP, DOLLAR+ "loopEnd."+String.valueOf(val));
+        this.decreaseIndent();
+
+        //nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
     }
 
     // ------------------------------------

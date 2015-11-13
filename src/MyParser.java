@@ -36,9 +36,6 @@ class MyParser extends parser
     // keep track of the line num
     private int m_nSavedLineCnt;
 
-    //list for a = b = c
-    public Vector<STO> assignA = new Vector<STO>();
-    public Vector<STO> assignB = new Vector<STO>();
 
 	private SymbolTable m_symtab;
 	//----------------------------------------------------------------
@@ -1674,7 +1671,7 @@ class MyParser extends parser
                   
             }
             else{
-                System.out.println("B "+ b.getName());
+       
                 codegen.DoVarAssign(a, b, null);
             }
 
@@ -2511,58 +2508,15 @@ class MyParser extends parser
                     result.setAndTag(true);
                     codegen.DoBinaryInt(a, b, o.getOp(), result);
                 }
-              //  else{
-/*
-                    result.setAndTag(true);
 
-                    if(b.getAndTag()){
-                        codegen.setholdOff(false);
-                        if(a.getNotTag()){
-                            codegen.popToAssembly();
-                            a.setNotTag(false);
-                        }
-                        
-                        codegen.DoBinaryBoolLHS(a, o.getOp());
-                        codegen.setholdOff(true);
-                        b.setAndTag(false);
-
-                        codegen.writeLHSOp();
-                        codegen.writeRHSOp();
-                        codegen.TimeToWrite();
-
-
-
-                        codegen.setholdOff(false);
-                        if(b.getNotTag()){
-                            codegen.popToAssembly();
-                            b.setNotTag(false);
-                        }
-                        codegen.DoBinaryBoolRHS(b, o.getOp(),result);
-                        codegen.setholdOff(true);
-
-
-
-                    }
-                    else{
-                        System.out.println("IN");
-                        codegen.DoBinaryBoolLHS(a, o.getOp());
-                        codegen.storeLHSOp(a,o.getOp());
-
-
-                        codegen.DoBinaryBoolRHS(b, o.getOp(), result);
-                        codegen.storeRHSOp(b,result,o.getOp());
-
-
-                    }          
-*/
-
-        //        }
             }
 
         
         return result;
     }
 
+
+    // This handles the LHS of short circuit for bool op
     void DoLHS(STO sto, String op){
 
         codegen.TimeToWrite();
@@ -2570,6 +2524,7 @@ class MyParser extends parser
         
 
     }
+    // This handles the RHS of short circuit for bool op
     void DoRHS(STO a, STO b, String op, STO result){
 
        codegen.TimeToWrite();
@@ -2578,14 +2533,14 @@ class MyParser extends parser
 
     }
 
+    // This empty the buffer after finishing all binary/uniary ops
     void DoBoolWrite(){
 
-    //    codegen.writeLHSOp();
-    //    codegen.writeRHSOp();
         codegen.TimeToWrite();
         codegen.setholdOff(false);
-    //    codegen.popAllToBuffer();
+
     }
+
     STO DoUnaryExpr(STO a, Operator o) {
         
         if(a instanceof ErrorSTO) {
@@ -2603,6 +2558,8 @@ class MyParser extends parser
             result = new ErrorSTO("Error");
             
         }
+
+        // Assembly Writing: This handles all unary ops writing to assembly
 
         offsetCnt ++;
         int val = -offsetCnt * 4;
@@ -2626,9 +2583,6 @@ class MyParser extends parser
 
             }
             codegen.DoUnary(a, result, "%o0", o.getOp());
-            codegen.addToBuffer();
-
-            result.setNotTag(true);
         }
         return result;
     
@@ -2740,7 +2694,7 @@ class MyParser extends parser
     }
 
 
-    STO DoIfAndWhile(STO a){
+    STO DoIf(STO a){
         STO result;
 
         if(a instanceof ErrorSTO) {
@@ -2755,7 +2709,7 @@ class MyParser extends parser
         }
         result = a;
 
-        //Write Assembly: cover if statement with int in condition exp ( for now )
+        //Write Assembly: cover if statement 
         if(a instanceof ConstSTO && !((ConstSTO)a).getLitTag()){
             codegen.DoIfLitCond(a);
         }
@@ -2763,6 +2717,46 @@ class MyParser extends parser
             codegen.DoIfExprCond(a);
         }
         return result;
+    }
+
+    STO DoWhile(STO a){
+        STO result;
+
+        if(a instanceof ErrorSTO) {
+            return a;
+        }
+
+
+        if(!(a.getType().isEquivalent(new BoolType("Bool")))){
+            m_nNumErrors++;
+            m_errors.print(Formatter.toString(ErrorMsg.error4_Test, a.getType().getName()));
+            return new ErrorSTO("Error");
+        }
+        result = a;
+
+        //Write Assembly: cover while statement 
+        //codegen.setholdOff(false);
+        //codegen.DoWhileOpenLoop();
+        //codegen.setholdOff(true);
+
+        //codegen.TimeToWrite();
+        
+        if(a instanceof ConstSTO && !((ConstSTO)a).getLitTag()){
+            codegen.DoWhileLitCond(a);
+        }
+        else{
+            codegen.DoWhileExprCond(a);
+        }
+        return result;
+    }
+    // Write Assembly: call DoWhileOpenLoop in ACG
+    void CallDoWhileOpenLoop(){
+        codegen.DoWhileOpenLoop();
+    }
+
+    // Write Assembly: call DoWhileCloseLoop in ACG
+    void CallDoWhileCloseLoop(){
+        codegen.DoWhileCloseLoop();
     }
 
     // Write Assembly: call DoElse in ACG
@@ -3165,6 +3159,8 @@ class MyParser extends parser
             m_errors.print(ErrorMsg.error12_Break);
             return;
         }
+        //Write Assembly: handles break statement in assembly
+        codegen.DoBreak();
     }
 
     void DoContinue(){
