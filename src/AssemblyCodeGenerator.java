@@ -750,6 +750,15 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%o1", "%o1");
         this.decreaseIndent();
 
+        
+        // do load for reference added 11/14
+        if(sto.flag) {
+                // ld    [%o1], o1
+           this.increaseIndent();
+           this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1");
+           this.decreaseIndent();
+        }
+
         // set    expr offset, %o1  
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, SET_OP, expr.getOffset(), "%l7");
@@ -925,7 +934,19 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, a.getBase(), "%o1", "%o1");
         this.decreaseIndent();
 
+
+        // add load op for ref 
+        // ld [%o1] %o1
         // set   #, %o0
+        if(a.flag) {
+           this.increaseIndent();
+           this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1");
+           this.decreaseIndent();
+
+        }
+
+
+
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, SET_OP, b, "%o0");
         this.decreaseIndent();
@@ -1379,7 +1400,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), reg);
         this.decreaseIndent();
 
-        // add %g0, %l7, %l7
+        // add base, %l7, %l7
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), reg, reg);
         this.decreaseIndent(); 
@@ -1387,7 +1408,15 @@ public class AssemblyCodeGenerator {
 
         this.increaseIndent();
         if(t instanceof BoolType){
-            // ld [%l7], %o0
+
+            // if param is a reference
+            if(sto.flag == true) {
+               this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", reg);
+               //this.decreaseIndent();
+
+            }
+
+            // ld [%l7], %o0/
             this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", "%o0");
             this.decreaseIndent();
 
@@ -1396,6 +1425,15 @@ public class AssemblyCodeGenerator {
             this.writeAssembly(ONE_PARAM, CALL_OP, DOLLAR+"printBool");
         }
         else if( t instanceof IntType){
+
+            if(sto.flag == true) {
+               this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", reg);
+               this.decreaseIndent();
+
+            }
+
+
+
             // ld [%l7], %o1
             this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", "%o1");
             this.decreaseIndent();
@@ -1409,6 +1447,12 @@ public class AssemblyCodeGenerator {
             this.writeAssembly(ONE_PARAM, CALL_OP, PRINT_OP);
         }
         else if( t instanceof FloatType){
+
+            if(sto.flag == true) {
+               this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", reg);
+               this.decreaseIndent();
+
+            }
             // ld [%l7], %f0
             this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", "%f0");
             this.decreaseIndent();
@@ -1551,6 +1595,15 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%l7", "%l7");
         this.decreaseIndent();
+
+        if(sto.flag == true) {
+            // ld    [%l7], %l7
+           this.increaseIndent();
+           this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
+           this.decreaseIndent();
+
+        
+        }
 
         // ld    [%l7], reg
         this.increaseIndent();
@@ -2742,10 +2795,13 @@ public class AssemblyCodeGenerator {
                     this.writeAssembly(NO_PARAM, "! "+param.getName()+"<-"+String.valueOf(valf)); 
                     this.decreaseIndent();
 
+                    // rodata for float
+                    this.DoFloatRoData(value,"%f"+String.valueOf(i));
+
                     // ! set  # %o1
-                    this.increaseIndent();
-                    this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(valf), "%o"+String.valueOf(i));
-                    this.decreaseIndent();
+                   // this.increaseIndent();
+                   // this.writeAssembly(TWO_PARAM, SET_OP, DOLLAR + "float." + Integer.toString(constFloatCnt), "%f"+String.valueOf(i));
+                    //this.decreaseIndent();
 
                 }
                 else {
@@ -2770,6 +2826,9 @@ public class AssemblyCodeGenerator {
                     this.decreaseIndent();
 
                     // pass by value for non lit
+                    
+                    
+                    
                     if(param.flag == false){
                        // set  offset %l7
                        this.increaseIndent();
@@ -2783,7 +2842,12 @@ public class AssemblyCodeGenerator {
 
                        // ld [%l7], %o1
                        this.increaseIndent();
-                       this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o"+String.valueOf(i));
+                       if(param.getType() instanceof FloatType) {
+                          this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%f"+String.valueOf(i));
+                       }
+                       else {
+                          this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o"+String.valueOf(i));
+                       }
                        this.decreaseIndent();
                     }
                     // pass by reference
@@ -2797,6 +2861,16 @@ public class AssemblyCodeGenerator {
                        this.increaseIndent();
                        this.writeAssembly(THREE_PARAM, ADD_OP, value.getBase(), "%o"+String.valueOf(i), "%o"+String.valueOf(i));
                        this.decreaseIndent();
+
+                       // ADDED if arg passed in to function param is a ref
+                       if(value.flag == true) {
+                          // ld [%l7], %o1
+                          this.increaseIndent();
+                          this.writeAssembly(TWO_PARAM, LOAD_OP,  "["+"%o"+String.valueOf(i)+"]", "%o"+String.valueOf(i));
+                          this.decreaseIndent();
+
+                       }
+
 
                     }
 
@@ -2815,24 +2889,29 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(NO_PARAM, NOP_OP); 
         this.decreaseIndent();
 
-        // set offset, %o1
-        this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), "%o1"); 
-        this.decreaseIndent();
+        if( !(func.getType() instanceof VoidType) ) {
+           // set offset, %o1
+           this.increaseIndent();
+           this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), "%o1"); 
+           this.decreaseIndent();
 
 
-        //add base %o1, %o1
-        this.increaseIndent();
-        this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%o1", "%o1"); 
-        this.decreaseIndent();
+           //add base %o1, %o1
+           this.increaseIndent();
+           this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%o1", "%o1"); 
+           this.decreaseIndent();
 
 
 
-        // st %o0, [%o1]
-        this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]"); 
-        this.decreaseIndent();
-    }
+            // st %o0, [%o1]
+           this.increaseIndent();
+           this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]"); 
+           this.decreaseIndent();
+
+        
+        }
+        
+      }
 
     // --------------------------------------------
     // handles func with params
@@ -2846,7 +2925,14 @@ public class AssemblyCodeGenerator {
             String base = paramlist.get(i).getBase();
             String offset = paramlist.get(i).getOffset();
             this.increaseIndent();
-            this.writeAssembly(TWO_PARAM, STORE_OP, "%i"+String.valueOf(i), "["+base+"+"+offset+"]");
+
+            // float case uses %f
+            if(paramlist.get(i).getType() instanceof FloatType && paramlist.get(i).flag == false) {
+               this.writeAssembly(TWO_PARAM, STORE_OP, "%f"+String.valueOf(i), "["+base+"+"+offset+"]");
+            }
+            else { // other
+               this.writeAssembly(TWO_PARAM, STORE_OP, "%i"+String.valueOf(i), "["+base+"+"+offset+"]");
+            }
             this.decreaseIndent();
         }
 
