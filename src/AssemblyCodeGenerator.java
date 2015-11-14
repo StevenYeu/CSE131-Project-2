@@ -2762,7 +2762,7 @@ public class AssemblyCodeGenerator {
     //------------------------------------------
     // handles func call with params
     //------------------------------------------
-    public void DoFuncCallParam(STO sto, STO func, Vector<STO> valuelist){
+    public void DoFuncCallParam(STO sto, STO func, Vector<STO> valuelist, int offset){
     
         this.writeAssembly(NEWLINE);
 
@@ -2804,9 +2804,29 @@ public class AssemblyCodeGenerator {
                     this.writeAssembly(NO_PARAM, "! "+param.getName()+"<-"+String.valueOf(valf)); 
                     this.decreaseIndent();
 
-                    // rodata for float
-                    this.DoFloatRoData(value,"%f"+String.valueOf(i));
 
+                    // Type promotion for int
+                    if(value.getType() instanceof IntType){
+                        
+                        val = con.getIntValue();
+
+                        //set val, %o#
+                        this.increaseIndent();
+                        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(val), "%o"+String.valueOf(i));
+                        this.decreaseIndent();
+
+                        STO promote = new ExprSTO("promote");
+                        offset ++;
+                        promote.setBase("%fp");
+                        promote.setOffset(String.valueOf(-offset*4));
+
+                        this.DoTypePromotion(promote, "%f"+String.valueOf(i), "%o"+String.valueOf(i));
+
+                    }
+                    else{
+                        // rodata for float 
+                        this.DoFloatRoData(value,"%f"+String.valueOf(i));
+                    } 
                     // ! set  # %o1
                    // this.increaseIndent();
                    // this.writeAssembly(TWO_PARAM, SET_OP, DOLLAR + "float." + Integer.toString(constFloatCnt), "%f"+String.valueOf(i));
@@ -2852,10 +2872,28 @@ public class AssemblyCodeGenerator {
                        // ld [%l7], %o1
                        this.increaseIndent();
                        if(param.getType() instanceof FloatType) {
-                          this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%f"+String.valueOf(i));
+                          if(value.getType() instanceof IntType){
+                             // Type promotion
+                             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o"+String.valueOf(i));
+                             
+                             STO promote = new ExprSTO("promote");
+                             offset ++;
+                             promote.setBase("%fp");
+                             promote.setOffset(String.valueOf(-offset*4));
+
+                             this.decreaseIndent(); 
+                             this.DoTypePromotion(promote, "%f"+String.valueOf(i), "%o"+String.valueOf(i));
+                             this.increaseIndent();
+                          }
+                          else{
+                             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%f"+String.valueOf(i));
+                          }
+
                        }
                        else {
+                          
                           this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o"+String.valueOf(i));
+                          
                        }
                        this.decreaseIndent();
                     }
@@ -2942,7 +2980,8 @@ public class AssemblyCodeGenerator {
 
             // float case uses %f
             if(paramlist.get(i).getType() instanceof FloatType && paramlist.get(i).flag == false) {
-               this.writeAssembly(TWO_PARAM, STORE_OP, "%f"+String.valueOf(i), "["+base+"+"+offset+"]");
+                this.writeAssembly(TWO_PARAM, STORE_OP, "%f"+String.valueOf(i), "["+base+"+"+offset+"]");
+   
             }
             else { // other
                this.writeAssembly(TWO_PARAM, STORE_OP, "%i"+String.valueOf(i), "["+base+"+"+offset+"]");

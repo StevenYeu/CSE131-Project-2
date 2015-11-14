@@ -1961,27 +1961,27 @@ class MyParser extends parser
               if(match == params.size()) {
                  result = new ExprSTO(fun.getName(),fun.getType());
                  // Write Assembly: set offset and base
-                         offsetCnt ++;
-                         int val = -offsetCnt * ((FuncSTO)fun).getReturnType().getSize();
-                         String offset = String.valueOf(val);
-                         result.setOffset(offset);
-                         result.setBase("%fp");
+                 offsetCnt ++;
+                 int val = -offsetCnt * ((FuncSTO)fun).getReturnType().getSize();
+                 String offset = String.valueOf(val);
+                 result.setOffset(offset);
+                 result.setBase("%fp");
 
-                         if(this.GetSavedLineCnt() == 0){
-                             this.SaveLineCnt();
-                         }
-                         if(this.GetSavedLineCnt() != this.GetLineNum()){
-                             if(codegen.getholdOff()){
-                                 codegen.TimeToWrite();
-                             }
-                             this.SaveLineCnt();
-                             codegen.setholdOff(false);
-                         }
-                         else{
-                             codegen.setholdOff(true);
-                         }
+                 if(this.GetSavedLineCnt() == 0){
+                     this.SaveLineCnt();
+                 }
+                 if(this.GetSavedLineCnt() != this.GetLineNum()){
+                     if(codegen.getholdOff()){
+                         codegen.TimeToWrite();
+                     }
+                     this.SaveLineCnt();
+                     codegen.setholdOff(false);
+                 }
+                 else{
+                     codegen.setholdOff(true);
+                 }
 
-                 codegen.DoFuncCallParam(result, fun, params);
+                 codegen.DoFuncCallParam(result, fun, params, offsetCnt);
                  // - end
                  if(fun.flag == true) { // return by ref set to Mod L
                     result.setIsModifiable(true);
@@ -2151,7 +2151,7 @@ class MyParser extends parser
                              codegen.setholdOff(true);
                          }
 
-                         codegen.DoFuncCallParam(result, fun, params);
+                         codegen.DoFuncCallParam(result, fun, params, offsetCnt);
                          // - end
 
               		   if(fun.flag == true) { // return by ref set to Mod L
