@@ -470,6 +470,197 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(NO_PARAM, RESTORE_OP);
         this.decreaseIndent();
+
+
+        this.writeAssembly(NEWLINE);
+
+        // .$$.arrCheck
+        this.writeAssembly(NO_PARAM, DOLLAR + "arrCheck:");
+
+        // save %sp, -96, %sp
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, SAVE_OP, "%sp", "-96", "%sp");
+        this.decreaseIndent();
+        
+        // cmp %io,%go
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, CMP_OP, "%i0","%g0");
+        this.decreaseIndent();
+
+        // bl .$$.arrCheck2
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, BL_OP, DOLLAR + "arrCheck2");
+        this.decreaseIndent();
+
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+
+        // cmp %io,%i1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, CMP_OP, "%i0","%g0");
+        this.decreaseIndent();
+
+        // bge .$$.arrCheck2
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, BGE_OP, DOLLAR + "arrCheck2");
+        this.decreaseIndent();
+
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+
+        // ret
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, RET_OP);
+        this.decreaseIndent();
+
+        // restore
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, RESTORE_OP);
+        this.decreaseIndent();
+
+
+
+        // .$$.arrCheck2
+        this.writeAssembly(NO_PARAM, DOLLAR + "arrCheck2:");
+
+
+        // set .$$.strArrBound, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, ".$$.strArrBound", "%o0");
+        this.decreaseIndent();
+
+
+        // mov %i0 %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, MOV_OP,"%i0","%o0");
+        this.decreaseIndent();
+
+        // call printf
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, PRINT_OP);
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+        // ret
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, RET_OP);
+        this.decreaseIndent();
+
+        // restore
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, RESTORE_OP);
+        this.decreaseIndent();
+
+        // mov %i1 %o2
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, MOV_OP,"%i0","%o0");
+        this.decreaseIndent();
+
+
+        // call exit
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, EXIT_OP);
+        this.decreaseIndent();
+
+
+        // mov 1 %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, MOV_OP,"1","%o0");
+        this.decreaseIndent();
+
+
+        // ret
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, RET_OP);
+        this.decreaseIndent();
+
+        // restore
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, RESTORE_OP);
+        this.decreaseIndent();
+
+
+
+
+        this.writeAssembly(NEWLINE);
+
+        // .$$.ptrCheck
+        this.writeAssembly(NO_PARAM, DOLLAR + "ptrCheck:");
+
+        // save %sp, -96, %sp
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, SAVE_OP, "%sp", "-96", "%sp");
+        this.decreaseIndent();
+        
+        // cmp %io,%g0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, CMP_OP, "%i0","%g0");
+        this.decreaseIndent();
+
+        // bne .$$.ptrCheck2
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, BNE_OP, DOLLAR + "ptrCheck2");
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+        //set .$$.strNullPtr %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, ".$$.strNullPtr", "%o0");
+        this.decreaseIndent();
+
+
+        // call printf
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, PRINT_OP);
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+
+        // call printf
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, PRINT_OP);
+        this.decreaseIndent();
+
+        // mov 1 %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, MOV_OP,"1","%o0");
+        this.decreaseIndent();
+
+
+        // .$$.ptrCheck2
+        this.writeAssembly(NO_PARAM, DOLLAR + "ptrCheck2:");
+
+        // ret
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, RET_OP);
+        this.decreaseIndent();
+
+        // restore
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, RESTORE_OP);
+        this.decreaseIndent();
+
+
         
 
     }
