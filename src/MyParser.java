@@ -3082,26 +3082,48 @@ class MyParser extends parser
 
         // Write Assembly: for Lit return stmt
         if(expr instanceof ConstSTO && !((ConstSTO)expr).getLitTag()){
-            Type t = expr.getType(); 
+            STO promote = null;
+            Type t = m_symtab.getFunc().getReturnType(); 
             String exp = "";
             if(t instanceof IntType){
                 int i = ((ConstSTO)expr).getIntValue();
                 exp = String.valueOf(i);
             }
             else if(t instanceof FloatType){
-                float i = ((ConstSTO)expr).getFloatValue();
-                exp = String.valueOf(i);
+                // Type promotion
+                if(expr.getType() instanceof IntType){
+                    int i = ((ConstSTO)expr).getIntValue();
+                    exp = String.valueOf(i);
+                    promote = new ExprSTO("promote");
+                    promote.setOffset(String.valueOf(++offsetCnt * -4));
+                    promote.setBase("%fp");
+                    
+                }
+                else{
+                    float i = ((ConstSTO)expr).getFloatValue();
+                    exp = String.valueOf(i);
+                }
+
             }
             else if(t instanceof BoolType){
                 int i = ((ConstSTO)expr).getBoolValue() ? 1 : 0;
                 exp = String.valueOf(i);
             }
 
-            codegen.DoReturnLit(m_symtab.getFunc(), exp, expr);
+            codegen.DoReturnLit(m_symtab.getFunc(), exp, expr, promote);
         }
         // for all other cases
         else{
-            codegen.DoReturnNonVoid(m_symtab.getFunc(), expr);
+            // Type promotion
+            STO promote = null;
+            Type typ = m_symtab.getFunc().getReturnType();
+            if(typ instanceof FloatType && expr.getType() instanceof IntType){
+                promote = new ExprSTO("promote");
+                promote.setOffset(String.valueOf(++offsetCnt * -4));
+                promote.setBase("%fp");
+            }
+          
+            codegen.DoReturnNonVoid(m_symtab.getFunc(), expr, promote);
         }
         return new ExprSTO("return", m_symtab.getFunc().getReturnType() );
     }

@@ -3031,7 +3031,7 @@ public class AssemblyCodeGenerator {
     // --------------------------------------------
     // handles func Lit return
     // --------------------------------------------
-    public void DoReturnLit(STO sto, String expr, STO lit){
+    public void DoReturnLit(STO sto, String expr, STO lit, STO promote){
 
         this.writeAssembly(NEWLINE);
 
@@ -3044,15 +3044,26 @@ public class AssemblyCodeGenerator {
         
         
         if(lit.getType() instanceof FloatType) {
-           this.DoFloatRoData(lit,"%f0");
+            
+            this.DoFloatRoData(lit,"%f0");
         
         }
         else {
-                
-           //set  #, "%i0"
-           this.increaseIndent();
-           this.writeAssembly(TWO_PARAM, SET_OP, expr, "%i0");
-           this.decreaseIndent();
+          if(promote != null) {
+              //set  #, "%i0"
+              this.increaseIndent();
+              this.writeAssembly(TWO_PARAM, SET_OP, expr, "%i0");
+              this.decreaseIndent();
+ 
+              this.DoTypePromotion(promote, "%f0", "%i0");
+
+           }
+           else{     
+              //set  #, "%i0"
+              this.increaseIndent();
+              this.writeAssembly(TWO_PARAM, SET_OP, expr, "%i0");
+              this.decreaseIndent();
+           }
         }
         
 
@@ -3083,7 +3094,7 @@ public class AssemblyCodeGenerator {
     // --------------------------------------------
     // handles func int/float/bool return
     // --------------------------------------------
-    public void DoReturnNonVoid(STO sto, STO expr){
+    public void DoReturnNonVoid(STO sto, STO expr, STO promote){
         
         this.writeAssembly(NEWLINE);
 
@@ -3108,7 +3119,17 @@ public class AssemblyCodeGenerator {
            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%f0"); 
         }
         else {
-           this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%i0"); 
+           // Type Promotion
+           if(promote != null){
+               this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%i0"); 
+                
+               this.decreaseIndent();
+               this.DoTypePromotion(promote, "%f0", "%i0");
+               this.increaseIndent();
+           }
+           else{
+               this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%i0");
+           }
         }
         this.decreaseIndent();
 
