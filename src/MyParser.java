@@ -1981,7 +1981,8 @@ class MyParser extends parser
                      codegen.setholdOff(true);
                  }
 
-                 codegen.DoFuncCallParam(result, fun, params, offsetCnt);
+                 offsetCnt = codegen.DoFuncCallParam(result, fun, params, offsetCnt);
+
                  // - end
                  if(fun.flag == true) { // return by ref set to Mod L
                     result.setIsModifiable(true);
@@ -2151,7 +2152,7 @@ class MyParser extends parser
                              codegen.setholdOff(true);
                          }
 
-                         codegen.DoFuncCallParam(result, fun, params, offsetCnt);
+                         offsetCnt = codegen.DoFuncCallParam(result, fun, params, offsetCnt);
                          // - end
 
               		   if(fun.flag == true) { // return by ref set to Mod L

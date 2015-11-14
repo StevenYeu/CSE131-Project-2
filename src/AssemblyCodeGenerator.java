@@ -2762,7 +2762,7 @@ public class AssemblyCodeGenerator {
     //------------------------------------------
     // handles func call with params
     //------------------------------------------
-    public void DoFuncCallParam(STO sto, STO func, Vector<STO> valuelist, int offset){
+    public int DoFuncCallParam(STO sto, STO func, Vector<STO> valuelist, int offset){
     
         this.writeAssembly(NEWLINE);
 
@@ -2921,8 +2921,8 @@ public class AssemblyCodeGenerator {
 
                     }
 
-
             }
+            
             
         }
 
@@ -2962,6 +2962,7 @@ public class AssemblyCodeGenerator {
 
         
         }
+        return offset;
         
       }
 
