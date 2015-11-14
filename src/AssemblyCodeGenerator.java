@@ -474,9 +474,6 @@ public class AssemblyCodeGenerator {
 
     }
 
-    /*
-     * The next three methods used for var decl and assignment
-     */
 
     // ----------------------------------------------------------------------------------
     // This is for global/static uninit vars decl
@@ -523,6 +520,88 @@ public class AssemblyCodeGenerator {
     
     
     }
+
+    // ----------------------------------------------------------------------------------
+    // This is for static uninit vars decl
+    // ----------------------------------------------------------------------------------
+    public void DoStaticLocalVarDecl(STO sto, String name){
+
+        this.writeAssembly(NEWLINE);
+
+        // .section .bss
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, SECTION, "\".bss\"");
+        this.decreaseIndent();
+
+        // .align  4 
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(4));
+        this.decreaseIndent();
+
+        // varname:
+        this.writeAssembly(NO_PARAM,name+":");
+
+        // .skip # (should anto init var to 0/false
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, SKIP, String.valueOf(sto.getType().getSize())); 
+        this.writeAssembly(NEWLINE);
+        this.decreaseIndent();
+
+        this.writeAssembly(NEWLINE);
+
+        // .section .text
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, SECTION, "\".text\"");
+        this.decreaseIndent();
+
+        // .align   4
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(4));
+        this.decreaseIndent();
+     
+    }
+
+    // ----------------------------------------------------------------------------------
+    // This is for static init vars decl -- to be implemented
+    // ----------------------------------------------------------------------------------
+    public void DoStaticLocalVarInit(STO sto, String section, String name){
+
+        this.writeAssembly(NEWLINE);
+
+        // .section .bss
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, SECTION, "\".bss\"");
+        this.decreaseIndent();
+
+        // .align  4 
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(4));
+        this.decreaseIndent();
+
+        // varname:
+        this.writeAssembly(NO_PARAM,name+":");
+
+        // .word # (should anto init var to 0/false
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, WORD, String.valueOf(sto.getType().getSize())); 
+        this.writeAssembly(NEWLINE);
+        this.decreaseIndent();
+
+        this.writeAssembly(NEWLINE);
+
+        // .section .text
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, SECTION, "\".text\"");
+        this.decreaseIndent();
+
+        // .align   4
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(4));
+        this.decreaseIndent();
+     
+    }
+
+
 
 
     // ----------------------------------------------------------------------------------
@@ -958,6 +1037,20 @@ public class AssemblyCodeGenerator {
     }
 
 
+    public void FuncGroup(STO func) {
+        this.writeAssembly(NEWLINE);
+
+        // .global  func_name
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, GLOBAL, func.getName());
+        this.decreaseIndent();
+
+        // label:
+        this.writeAssembly(NO_PARAM, func.getName()+":");      
+    
+    }
+
+
 
 
     /*
@@ -973,16 +1066,7 @@ public class AssemblyCodeGenerator {
 
         String SAVE = "SAVE." + sto.getName() + "."+ ((FuncSTO)sto).getAssemblyName();
 
-        this.writeAssembly(NEWLINE);
-
-        // .global  func_name
-        this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, GLOBAL, sto.getName());
-        this.decreaseIndent();
-
-        // label:
-        // label.returntype:
-        this.writeAssembly(NO_PARAM, sto.getName()+":");
+        // label.params:
         this.writeAssembly(NO_PARAM, sto.getName()+"."+((FuncSTO)sto).getAssemblyName() +":");
         
         // set   SAVE.funcname.type, %g1
@@ -2448,9 +2532,33 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(NO_PARAM, "! break" );
         this.decreaseIndent();
 
-        // ba     .$$.loopCheck.#
+        // ba     .$$.loopEnd.#
         this.increaseIndent();
         this.writeAssembly(ONE_PARAM, BA_OP, DOLLAR+ "loopEnd."+String.valueOf(val));
+        this.decreaseIndent();
+
+        //nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+    }
+
+    // --------------------------------------------------------------
+    // handles continue statement
+    // --------------------------------------------------------------
+    public void DoContinue(){
+
+        int val = wlabel.peek();
+
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! continue" );
+        this.decreaseIndent();
+
+        // ba     .$$.loopCheck.#
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, BA_OP, DOLLAR+ "loopCheck."+String.valueOf(val));
         this.decreaseIndent();
 
         //nop
@@ -2551,7 +2659,7 @@ public class AssemblyCodeGenerator {
     //------------------------------------------
     // handles func call with no params
     //------------------------------------------
-    public void DoFuncCallNoParam(STO sto){
+    public void DoFuncCallNoParam(STO sto, STO func){
     
         this.writeAssembly(NEWLINE);
 
@@ -2562,7 +2670,7 @@ public class AssemblyCodeGenerator {
 
         //call foo.void
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)sto).getAssemblyName()); 
+        this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)func).getAssemblyName()); 
         this.decreaseIndent();
 
         // nop
@@ -2589,6 +2697,160 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
     }
 
+    //------------------------------------------
+    // handles func call with params
+    //------------------------------------------
+    public void DoFuncCallParam(STO sto, STO func, Vector<STO> valuelist){
+    
+        this.writeAssembly(NEWLINE);
+
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! " + sto.getName()+"(...)"); 
+        this.decreaseIndent();
+
+        Vector<STO> paramlist = ((FuncSTO)func).getParams();
+
+        for(int i = 0; i < paramlist.size(); i++){
+            STO param = paramlist.get(i);
+            Type t = paramlist.get(i).getType();
+            STO value = valuelist.get(i);
+            if(value instanceof ConstSTO && !((ConstSTO)value).getLitTag()){
+                         
+                ConstSTO con = (ConstSTO)value;
+                int val =0; 
+                float valf = 0;
+                
+                if(t instanceof IntType){
+                    val = con.getIntValue();
+                     // ! comment
+                    this.increaseIndent();
+                    this.writeAssembly(NO_PARAM, "! "+param.getName()+"<-"+String.valueOf(val)); 
+                    this.decreaseIndent();
+
+                    // ! set  # %o1
+                    this.increaseIndent();
+                    this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(val), "%o"+String.valueOf(i));
+                    this.decreaseIndent();
+
+
+                }
+                else if (t instanceof FloatType) {
+                    valf = con.getFloatValue();
+                     // ! comment
+                    this.increaseIndent();
+                    this.writeAssembly(NO_PARAM, "! "+param.getName()+"<-"+String.valueOf(valf)); 
+                    this.decreaseIndent();
+
+                    // ! set  # %o1
+                    this.increaseIndent();
+                    this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(valf), "%o"+String.valueOf(i));
+                    this.decreaseIndent();
+
+                }
+                else {
+                   val = con.getBoolValue() ? 1 : 0;
+                    // ! comment
+                    this.increaseIndent();
+                    this.writeAssembly(NO_PARAM, "! "+param.getName()+"<-"+String.valueOf(val)); 
+                    this.decreaseIndent();
+
+                    // ! set  # %o1
+                    this.increaseIndent();
+                    this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(val), "%o"+String.valueOf(i));
+                    this.decreaseIndent();
+
+                }
+            
+            }
+            else{
+                    // ! comment
+                    this.increaseIndent();
+                    this.writeAssembly(NO_PARAM, "! "+param.getName()+"<-"+value.getName()); 
+                    this.decreaseIndent();
+
+                    // pass by value for non lit
+                    if(param.flag == false){
+                       // set  offset %l7
+                       this.increaseIndent();
+                       this.writeAssembly(TWO_PARAM, SET_OP, value.getOffset(), "%l7");
+                       this.decreaseIndent();
+
+                       // add base %l7, %l7
+                       this.increaseIndent();
+                       this.writeAssembly(THREE_PARAM, ADD_OP, value.getBase(), "%l7", "%l7");
+                       this.decreaseIndent();
+
+                       // ld [%l7], %o1
+                       this.increaseIndent();
+                       this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o"+String.valueOf(i));
+                       this.decreaseIndent();
+                    }
+                    // pass by reference
+                    else{
+                       // set  offset %o1
+                       this.increaseIndent();
+                       this.writeAssembly(TWO_PARAM, SET_OP, value.getOffset(), "%o"+String.valueOf(i));
+                       this.decreaseIndent();
+
+                       // add base %o1, %o1
+                       this.increaseIndent();
+                       this.writeAssembly(THREE_PARAM, ADD_OP, value.getBase(), "%o"+String.valueOf(i), "%o"+String.valueOf(i));
+                       this.decreaseIndent();
+
+                    }
+
+
+            }
+            
+        }
+
+        //call foo.void
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)func).getAssemblyName()); 
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP); 
+        this.decreaseIndent();
+
+        // set offset, %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), "%o1"); 
+        this.decreaseIndent();
+
+
+        //add base %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%o1", "%o1"); 
+        this.decreaseIndent();
+
+
+
+        // st %o0, [%o1]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]"); 
+        this.decreaseIndent();
+    }
+
+    // --------------------------------------------
+    // handles func with params
+    // --------------------------------------------
+    public void DoParams(STO sto){
+      
+        Vector<STO> paramlist = ((FuncSTO)sto).getParams();
+
+        for(int i = 0; i < paramlist.size(); i++){
+            // st     reg, [%fp+68]
+            String base = paramlist.get(i).getBase();
+            String offset = paramlist.get(i).getOffset();
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, STORE_OP, "%i"+String.valueOf(i), "["+base+"+"+offset+"]");
+            this.decreaseIndent();
+        }
+
+    }
 
     // --------------------------------------------
     // handles func void return
@@ -2691,7 +2953,7 @@ public class AssemblyCodeGenerator {
 
         // ld   [%l7], %i0
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "i0"); 
+        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%i0"); 
         this.decreaseIndent();
 
 

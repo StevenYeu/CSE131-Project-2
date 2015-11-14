@@ -686,18 +686,26 @@ class MyParser extends parser
 
                     //Assembly writing: for uninit global var decl
                     //global scope is always 1
-                    if(m_symtab.getLevel() == 1 ||  (optstatic != null)){
+                    if(m_symtab.getLevel() == 1){
                         sto.setBase("%g0");
                         sto.setOffset(id);
                         codegen.DoGlobalVarDecl(sto);
                     }
                     // assembly for uninit local var decl
                     else{
-                        sto.setBase("%fp");
-                        offsetCnt++;
-                        int val = -offsetCnt * t.getSize();
-                        String value = String.valueOf(val);
-                        sto.setOffset(value);
+                        if(optstatic != null){
+                            sto.setBase("%g0");
+                            sto.setOffset(id);
+                            String name = m_symtab.getFunc().getName()+"."+m_symtab.getFunc().getAssemblyName()+"."+id;
+                            codegen.DoStaticLocalVarDecl(sto, name);
+                        }
+                        else{
+                            sto.setBase("%fp");
+                            offsetCnt++;
+                            int val = -offsetCnt * t.getSize();
+                            String value = String.valueOf(val);
+                            sto.setOffset(value);
+                        }
                     }
 		            m_symtab.insert(sto);
                     return;
@@ -718,10 +726,18 @@ class MyParser extends parser
                 // case in global or static
                 if(m_symtab.getLevel() == 1 || (optstatic != null)){
 
+                    if(optstatic != null){
+                       // sto.setName(m_symtab.getFunc().getAssemblyName()+"."+id);
+                        sto.setOffset(sto.getName());
+                    
+                    }
+                    else{
+
+                        sto.setOffset(id);
+                    }
+
                     //set base and offset
                     sto.setBase("%g0");
-
-                    sto.setOffset(id);
 
                     // const init
                     if(expr instanceof ConstSTO){
@@ -1367,15 +1383,6 @@ class MyParser extends parser
         sto.setOTag(true); // tag to exclude self from overload check
         m_symtab.insert(sto);
 
-        //WRITE ASSEMBLY
-        //the start of the function
-
-        codegen.DoFuncStart(sto, "%g1");
-
-       
-
-
-
         //handle struct func declaration
         if(isInStruct){ //  check if func is in struct decl
             Scope fun = m_symtab.getCurrScope();
@@ -1385,6 +1392,12 @@ class MyParser extends parser
         //regular func overload
         else{
             m_symtab.addFunc(sto);
+        }
+
+        
+        // assembly for function group 
+        if(m_symtab.OverloadCheck(id).size() == 1) {
+           codegen.FuncGroup(sto);
         }
 
 
@@ -1450,6 +1463,7 @@ class MyParser extends parser
 	//----------------------------------------------------------------
 	void DoFormalParams(Vector<String> params)
 	{
+        int paramCnt = 0;
 		
         if (m_symtab.getFunc() == null)
 		{
@@ -1459,12 +1473,28 @@ class MyParser extends parser
 
 		// insert parameters here
         FuncSTO sto = m_symtab.getFunc();
+
         for(int i = 0; i < params.size(); i++){
 
             STO par = this.ProcessParams(params.get(i));
+
+            //Write Assembly: add base and offset to params
+            par.setOffset(String.valueOf(68+paramCnt*4));
+            paramCnt++;
+            par.setBase("%fp");
+
+            
             sto.addParam(par);
             m_symtab.insert(par);
         }
+
+        //WRITE ASSEMBLY
+        //the start of the function
+
+        codegen.DoFuncStart(sto, "%g1");
+
+        codegen.DoParams(sto);
+
         //sto.setTag(true); // figure out what flag is for
 
         Vector<STO> over = new Vector<STO>();
@@ -1763,24 +1793,24 @@ class MyParser extends parser
                   if(overParSize == 0 && parSize == 0) { // case if calling function has no params
                      STO result = new ExprSTO(fun.getName(),fun.getType());
                      if(fun.flag == true) { // return by ref set to Mod L
-                        fun.setIsModifiable(true);
-                        fun.setIsAddressable(true);
+                        result.setIsModifiable(true);
+                        result.setIsAddressable(true);
                      }
                      else { // if return by value set to R val
-                        fun.setIsModifiable(false);
-                        fun.setIsAddressable(false);
+                        result.setIsModifiable(false);
+                        result.setIsAddressable(false);
                      
                      }
                      if(((FuncSTO)fun).getReturnType() instanceof VoidType){
-;
+
                          codegen.DoFuncCallNoParamVoid(fun);
                      }
                      else{
                          offsetCnt ++;
                          int val = -offsetCnt * ((FuncSTO)fun).getReturnType().getSize();
                          String offset = String.valueOf(val);
-                         fun.setOffset(offset);
-                         fun.setBase("%fp");
+                         result.setOffset(offset);
+                         result.setBase("%fp");
 
                          if(this.GetSavedLineCnt() == 0){
                              this.SaveLineCnt();
@@ -1796,12 +1826,12 @@ class MyParser extends parser
                              codegen.setholdOff(true);
                          }
 
-                         codegen.DoFuncCallNoParam(fun);
+                         codegen.DoFuncCallNoParam(result, fun);
 
                          
                          
                      }
-                     return fun;
+                     return result;
                   }
                   else { // case if nonzero params 
                      return this.DoFunctionCall(sto,params,overloaded); // helper function 
@@ -1930,6 +1960,29 @@ class MyParser extends parser
               }
               if(match == params.size()) {
                  result = new ExprSTO(fun.getName(),fun.getType());
+                 // Write Assembly: set offset and base
+                         offsetCnt ++;
+                         int val = -offsetCnt * ((FuncSTO)fun).getReturnType().getSize();
+                         String offset = String.valueOf(val);
+                         result.setOffset(offset);
+                         result.setBase("%fp");
+
+                         if(this.GetSavedLineCnt() == 0){
+                             this.SaveLineCnt();
+                         }
+                         if(this.GetSavedLineCnt() != this.GetLineNum()){
+                             if(codegen.getholdOff()){
+                                 codegen.TimeToWrite();
+                             }
+                             this.SaveLineCnt();
+                             codegen.setholdOff(false);
+                         }
+                         else{
+                             codegen.setholdOff(true);
+                         }
+
+                 codegen.DoFuncCallParam(result, fun, params);
+                 // - end
                  if(fun.flag == true) { // return by ref set to Mod L
                     result.setIsModifiable(true);
                     result.setIsAddressable(true);
@@ -1985,6 +2038,36 @@ class MyParser extends parser
               if(parSize == overParSize) {
               	if(overParSize == 0 && parSize == 0) { // case if calling function has no params
               	  result =  new ExprSTO(fun.getName(),fun.getType());
+                  if(((FuncSTO)fun).getReturnType() instanceof VoidType){
+                      codegen.DoFuncCallNoParamVoid(result);
+                  }
+                  else{
+                        // Write Assembly: set offset and base
+                         offsetCnt ++;
+                         int val = -offsetCnt * ((FuncSTO)fun).getReturnType().getSize();
+                         String offset = String.valueOf(val);
+                         result.setOffset(offset);
+                         result.setBase("%fp");
+
+                         if(this.GetSavedLineCnt() == 0){
+                             this.SaveLineCnt();
+                         }
+                         if(this.GetSavedLineCnt() != this.GetLineNum()){
+                             if(codegen.getholdOff()){
+                                 codegen.TimeToWrite();
+                             }
+                             this.SaveLineCnt();
+                             codegen.setholdOff(false);
+                         }
+                         else{
+                             codegen.setholdOff(true);
+                         }
+
+                
+                          // - end
+
+                          codegen.DoFuncCallNoParam(result, fun);
+                  }
               	  if(fun.flag == true) { // return by ref set to Mod L
               	     result.setIsModifiable(true);
               	     result.setIsAddressable(true);
@@ -1996,6 +2079,7 @@ class MyParser extends parser
               	     return result;
               	       
               	  }
+
               	  /* End of no param case */
               	}
               	else {
@@ -2046,6 +2130,30 @@ class MyParser extends parser
               		}
               		if(match == params.size()) {
               		   result = new ExprSTO(fun.getName(),fun.getType());
+                         // Write Assembly: set offset and base
+                         offsetCnt ++;
+                         int val = -offsetCnt * ((FuncSTO)fun).getReturnType().getSize();
+                         String offset = String.valueOf(val);
+                         result.setOffset(offset);
+                         result.setBase("%fp");
+
+                         if(this.GetSavedLineCnt() == 0){
+                             this.SaveLineCnt();
+                         }
+                         if(this.GetSavedLineCnt() != this.GetLineNum()){
+                             if(codegen.getholdOff()){
+                                 codegen.TimeToWrite();
+                             }
+                             this.SaveLineCnt();
+                             codegen.setholdOff(false);
+                         }
+                         else{
+                             codegen.setholdOff(true);
+                         }
+
+                         codegen.DoFuncCallParam(result, fun, params);
+                         // - end
+
               		   if(fun.flag == true) { // return by ref set to Mod L
               		      result.setIsModifiable(true);
               		      result.setIsAddressable(true);
@@ -3169,6 +3277,9 @@ class MyParser extends parser
             m_errors.print(ErrorMsg.error12_Continue);
             return;
         }
+        //Write Assembly: handles continue statement in assembly
+        codegen.DoContinue();
+
     }
 
     StructdefSTO getStructSTO() {
