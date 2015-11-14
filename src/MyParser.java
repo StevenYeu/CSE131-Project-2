@@ -2039,7 +2039,7 @@ class MyParser extends parser
               	if(overParSize == 0 && parSize == 0) { // case if calling function has no params
               	  result =  new ExprSTO(fun.getName(),fun.getType());
                   if(((FuncSTO)fun).getReturnType() instanceof VoidType){
-                      codegen.DoFuncCallNoParamVoid(result);
+                      codegen.DoFuncCallNoParamVoid(fun);
                   }
                   else{
                         // Write Assembly: set offset and base
@@ -3096,7 +3096,7 @@ class MyParser extends parser
                 exp = String.valueOf(i);
             }
 
-            codegen.DoReturnLit(m_symtab.getFunc(), exp);
+            codegen.DoReturnLit(m_symtab.getFunc(), exp, expr);
         }
         // for all other cases
         else{

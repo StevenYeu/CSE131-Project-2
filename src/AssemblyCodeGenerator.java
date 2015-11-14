@@ -889,6 +889,15 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, a.getBase(), "%o1", "%o1");
         this.decreaseIndent();
 
+        // add load op for ref
+        // ld [%o1] %o1
+        if(a.flag) {
+           this.increaseIndent();
+           this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1" );
+           this.decreaseIndent();
+        
+        }
+
             
         if(promote != null){
             int val = ((ConstSTO)b).getIntValue();
@@ -2905,7 +2914,12 @@ public class AssemblyCodeGenerator {
 
             // st %o0, [%o1]
            this.increaseIndent();
-           this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]"); 
+           if(sto.getType() instanceof FloatType && sto.flag==false) {   
+              this.writeAssembly(TWO_PARAM, STORE_OP, "%f0", "[%o1]"); 
+           }
+           else {
+              this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]"); 
+           }
            this.decreaseIndent();
 
         
@@ -2966,7 +2980,7 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(NO_PARAM, RET_OP); 
         this.decreaseIndent();
-
+;
         // restore
         this.increaseIndent();
         this.writeAssembly(NO_PARAM, RESTORE_OP);
@@ -2977,7 +2991,7 @@ public class AssemblyCodeGenerator {
     // --------------------------------------------
     // handles func Lit return
     // --------------------------------------------
-    public void DoReturnLit(STO sto, String expr){
+    public void DoReturnLit(STO sto, String expr, STO lit){
 
         this.writeAssembly(NEWLINE);
 
@@ -2986,10 +3000,21 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(NO_PARAM, "! return " + expr); 
         this.decreaseIndent();
 
-        //set  #, "%i0"
-        this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, SET_OP, expr, "%i0");
-        this.decreaseIndent();
+        
+        
+        
+        if(lit.getType() instanceof FloatType) {
+           this.DoFloatRoData(lit,"%f0");
+        
+        }
+        else {
+                
+           //set  #, "%i0"
+           this.increaseIndent();
+           this.writeAssembly(TWO_PARAM, SET_OP, expr, "%i0");
+           this.decreaseIndent();
+        }
+        
 
         //call name.param.fini
         this.increaseIndent();
@@ -3039,7 +3064,12 @@ public class AssemblyCodeGenerator {
 
         // ld   [%l7], %i0
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%i0"); 
+        if(expr.getType() instanceof FloatType) {
+           this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%f0"); 
+        }
+        else {
+           this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%i0"); 
+        }
         this.decreaseIndent();
 
 
