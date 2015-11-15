@@ -16,7 +16,7 @@ abstract class STO
     private boolean thisTag = false;
     private boolean oTag = false;
     private boolean notTag = false;
-    private boolean andTag = false;
+    private boolean arrayTag = false;
     private String offset;
     private String base;
     private int value;
@@ -174,12 +174,12 @@ abstract class STO
         return notTag;
     }
 
-    public void setAndTag(boolean b){
-        andTag = b;
+    public void setArrayTag(boolean b){
+        arrayTag = b;
     }
 
-    public boolean getAndTag(){
-        return andTag;
+    public boolean getArrayTag(){
+        return arrayTag;
     }
 
 

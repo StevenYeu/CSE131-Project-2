@@ -589,7 +589,7 @@ class MyParser extends parser
             return;
 		}
 
-
+        // var decl for array  
         if(numDim > 0)
         {
             for(int i = 0; i < numDim; i++){ // for arrays
@@ -642,13 +642,46 @@ class MyParser extends parser
             }
  
 
-            
+            aTopType.setLength(((ConstSTO)sizeStoTop).getIntValue());
             sto = new VarSTO(id, aTopType);
+
+            // Assembly Write: array decl in Global scope    
+            if(m_symtab.getLevel() == 1){
+                codegen.DoGlobalVarDecl(sto);
+                sto.setBase("%g0");
+                sto.setOffset(id);
+
+            }
+            // local scope
+            else{
+                if(optstatic != null){
+                    // to be implemented
+                }
+                else{
+                    // uninit 
+                    if(expr == null){
+                        offsetCnt = offsetCnt + ((ArrayType)sto.getType()).getTotalSize()/4;
+                        sto.setBase("%fp");
+                        sto.setOffset(String.valueOf(offsetCnt * -4));
+                        
+
+                    }
+                    // init
+                    else{
+                    }
+                    
+                }
+                
+
+            }
+
+            
             // non-mod l-val for array
             sto.setIsAddressable(true);
             sto.setIsModifiable(false);
         }
         else {
+            // var decl for pointer 
             if(t instanceof PointerType){
                 if(expr == null) {
               	    sto = new VarSTO(id,t);
@@ -1665,10 +1698,42 @@ class MyParser extends parser
                 codegen.DoConstAssign(a, s, b.getName());
             }
             //bool case
-            else{
+            else if(a.getType() instanceof BoolType){
                 int val = ((ConstSTO)b).getBoolValue() ? 1 : 0;
                 String s = String.valueOf(val);
                 codegen.DoConstAssign(a, s, b.getName());
+            }
+            // array case
+            else{
+                ArrayType t = (ArrayType)a.getType();
+                Type baseType = t.getBaseType();
+                if(baseType instanceof IntType){
+                    int val = ((ConstSTO)b).getIntValue();
+                    codegen.DoConstAssign(a, String.valueOf(val), b.getName());
+                    
+                }
+                else if(baseType instanceof BoolType){
+                    int val = ((ConstSTO)b).getBoolValue() ? 1 : 0;
+                    codegen.DoConstAssign(a, String.valueOf(val), b.getName());
+                }
+                else if(baseType instanceof FloatType){
+                    if(b.getType() instanceof IntType){
+                        STO promote = new ExprSTO("temp");
+                        offsetCnt++;
+                        int value = -offsetCnt*4;
+                        promote.setOffset(String.valueOf(value));
+                        promote.setBase("%fp");
+                    
+                        codegen.DoFloatAssign(a, b, promote);
+                    
+                    }
+                    else{
+                        float val = ((ConstSTO)b).getFloatValue();
+                        codegen.DoFloatAssign(a, b, null);
+                    }
+                }
+
+
             }
         }
         else{
@@ -1719,6 +1784,10 @@ class MyParser extends parser
             result.setBase("%fp");
             result.setOffset(a.getOffset());
             
+        }
+
+        if(a.getArrayTag()){
+            result.setArrayTag(true);
         }
         result.setIsAddressable(false);
         result.setIsModifiable(false);
@@ -2364,17 +2433,24 @@ class MyParser extends parser
             VarSTO v = new VarSTO(sto.getName(), ((ArrayType)sto.getType()).getNext());
             v.setIsModifiable(true);
             v.setIsAddressable(true);
+
+            v.setOffset(String.valueOf(++offsetCnt * -4));
+            v.setBase("%fp");
+            v.setArrayTag(true);
+
+            codegen.DoArrayCheck(sto, expr, v);
             return v;
         }
         else if(sto.getType() instanceof PointerType) {
             VarSTO v = new VarSTO(sto.getName(), ((PointerType)sto.getType()).getNext());
             v.setIsModifiable(true);
             v.setIsAddressable(true);
+            codegen.DoArrayCheck(sto, expr, v);
             return v;
 
 
         }
-        
+       
         return sto;
         
         
@@ -2610,11 +2686,11 @@ class MyParser extends parser
                 }
                 // bool to bool
                 else if(a.getType() instanceof BoolType && o.getOp().equals("==")){
-                    result.setAndTag(true);
+  
                     codegen.DoBinaryInt(a, b, o.getOp(), result);
                 }
                 else if(a.getType() instanceof BoolType && o.getOp().equals("!=")){
-                    result.setAndTag(true);
+ 
                     codegen.DoBinaryInt(a, b, o.getOp(), result);
                 }
 

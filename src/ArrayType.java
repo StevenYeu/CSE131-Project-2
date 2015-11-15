@@ -7,6 +7,8 @@ class ArrayType extends CompositeType{
 
     Type next;
     int dimension;
+    int length;
+
     public ArrayType(String strName, int size,int dim){
         super(strName, size);
         dimension  = dim;
@@ -68,4 +70,19 @@ class ArrayType extends CompositeType{
             ((ArrayType)next).addNext(t);
         }
     }
+
+    public int offsetof(int total, int index){
+        index ++;
+        int bot = total/4;
+        int i = total - (bot-index) * 4;
+        return i;
+
+    }
+    public void setLength(int i){
+        length = i;
+    }
+    public int getLength(){
+        return length;
+    }
+
 }

@@ -501,7 +501,7 @@ public class AssemblyCodeGenerator {
 
         // cmp %io,%i1
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, CMP_OP, "%i0","%g0");
+        this.writeAssembly(TWO_PARAM, CMP_OP, "%i0","%i1");
         this.decreaseIndent();
 
         // bge .$$.arrCheck2
@@ -538,9 +538,9 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
 
-        // mov %i0 %o0
+        // mov %i0 %o1
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, MOV_OP,"%i0","%o0");
+        this.writeAssembly(TWO_PARAM, MOV_OP,"%i0","%o1");
         this.decreaseIndent();
 
         // call printf
@@ -548,24 +548,10 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(ONE_PARAM, CALL_OP, PRINT_OP);
         this.decreaseIndent();
 
-        // nop
-        this.increaseIndent();
-        this.writeAssembly(NO_PARAM, NOP_OP);
-        this.decreaseIndent();
-
-        // ret
-        this.increaseIndent();
-        this.writeAssembly(NO_PARAM, RET_OP);
-        this.decreaseIndent();
-
-        // restore
-        this.increaseIndent();
-        this.writeAssembly(NO_PARAM, RESTORE_OP);
-        this.decreaseIndent();
-
+  
         // mov %i1 %o2
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, MOV_OP,"%i0","%o0");
+        this.writeAssembly(TWO_PARAM, MOV_OP,"%i1","%o2");
         this.decreaseIndent();
 
 
@@ -636,9 +622,9 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
 
-        // call printf
+        // call exit
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, CALL_OP, PRINT_OP);
+        this.writeAssembly(ONE_PARAM, CALL_OP, EXIT_OP);
         this.decreaseIndent();
 
         // mov 1 %o0
@@ -667,7 +653,7 @@ public class AssemblyCodeGenerator {
 
 
     // ----------------------------------------------------------------------------------
-    // This is for global/static uninit vars decl
+    // This is for global/static uninit vars decl, now includes 1D array
     // ----------------------------------------------------------------------------------
     public void DoGlobalVarDecl(STO sto){
 
@@ -691,10 +677,14 @@ public class AssemblyCodeGenerator {
         // varname:
         this.writeAssembly(NO_PARAM,sto.getName()+":");
 
-        // .skip # (should anto init var to 0/false
+        // .skip # (should auto init var to 0/false)
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, SKIP, String.valueOf(sto.getType().getSize())); 
-        this.writeAssembly(NEWLINE);
+        if(sto.getType() instanceof ArrayType){
+            this.writeAssembly(ONE_PARAM, SKIP, String.valueOf(((ArrayType)sto.getType()).getTotalSize()));
+        }
+        else{
+            this.writeAssembly(ONE_PARAM, SKIP, String.valueOf(sto.getType().getSize()));
+        }
         this.decreaseIndent();
 
         this.writeAssembly(NEWLINE);
@@ -796,10 +786,132 @@ public class AssemblyCodeGenerator {
 
 
     // ----------------------------------------------------------------------------------
-    // This is for local var decl
+    // This is for local array assign
     // ----------------------------------------------------------------------------------
 
-    public void DoLocalVarDecl(STO sto, String reg){
+    public void DoArrayCheck(STO sto, STO expr, STO result){
+        
+        this.writeAssembly(NEWLINE);
+
+        // lit case
+        if(expr instanceof ConstSTO && !(((ConstSTO)expr).getLitTag())){
+
+            int value = ((ConstSTO)expr).getIntValue();
+
+            // ! comment
+            this.increaseIndent();
+            this.writeAssembly(NO_PARAM, "! "+sto.getName()+"["+String.valueOf(value)+"]");
+            this.decreaseIndent();
+
+            // set #, %o0
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(value), "%o0");
+            this.decreaseIndent();
+
+
+        }
+        // non lit case
+        else{
+
+            // ! comment
+            this.increaseIndent();
+            this.writeAssembly(NO_PARAM, "! "+sto.getName()+"["+expr.getName()+"]");
+            this.decreaseIndent();
+
+            //set expr.offset, %l7
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, SET_OP, expr.getOffset(), "%l7");
+            this.decreaseIndent();
+
+            //add %fp, %l7, %l7
+            this.increaseIndent();
+            this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(),"%l7", "%l7");
+            this.decreaseIndent();
+
+            //ld  [%l7], [%o0]
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o0");
+            this.decreaseIndent();
+
+        }
+
+        // set totalsize, %o1
+        int total = ((ArrayType)sto.getType()).getLength();
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(total), "%o1");
+        this.decreaseIndent();
+
+        // call  .$$.arrCheck
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, DOLLAR+"arrCheck");
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+        // set  base type size, %o0 
+        int baseSize = ((ArrayType)sto.getType()).getBaseType().getSize();
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(baseSize),"%o1");
+        this.decreaseIndent();
+
+        // call .mul
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, MUL_OP);
+        this.decreaseIndent();
+
+        // nop 
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+        //mov %o0, %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, MOV_OP, "%o0", "%o1");
+        this.decreaseIndent();
+
+        //set offset, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), "%o0");
+        this.decreaseIndent();
+
+        //add base, "%o0", "%o0"
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%o0", "%o0");
+        this.decreaseIndent();
+
+        //call .$$.ptrCheck
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, DOLLAR+"ptrCheck");
+        this.decreaseIndent();
+
+        //nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+        //add %o0, %o1, %o0
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, "%o0", "%o1", "%o0");
+        this.decreaseIndent();
+
+        //set result.offset, %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, result.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        //add %fp, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, result.getBase(),"%o1", "%o1");
+        this.decreaseIndent();
+
+        //st  %o0, [%o1]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
+        this.decreaseIndent();
+
     }
 
     // ----------------------------------------------------------------------------------
@@ -943,7 +1055,7 @@ public class AssemblyCodeGenerator {
 
         
         // do load for reference added 11/14
-        if(sto.flag) {
+        if(sto.flag || sto.getArrayTag()) {
                 // ld    [%o1], o1
            this.increaseIndent();
            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1");
@@ -1082,7 +1194,7 @@ public class AssemblyCodeGenerator {
 
         // add load op for ref
         // ld [%o1] %o1
-        if(a.flag) {
+        if(a.flag || a.getArrayTag()) {
            this.increaseIndent();
            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1" );
            this.decreaseIndent();
@@ -1137,8 +1249,7 @@ public class AssemblyCodeGenerator {
 
         // add load op for ref 
         // ld [%o1] %o1
-        // set   #, %o0
-        if(a.flag) {
+        if(a.flag || a.getArrayTag()) {
            this.increaseIndent();
            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1");
            this.decreaseIndent();
@@ -1146,7 +1257,7 @@ public class AssemblyCodeGenerator {
         }
 
 
-
+        // set   #, %o0
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, SET_OP, b, "%o0");
         this.decreaseIndent();
@@ -1610,7 +1721,7 @@ public class AssemblyCodeGenerator {
         if(t instanceof BoolType){
 
             // if param is a reference
-            if(sto.flag == true) {
+            if(sto.flag == true || sto.getArrayTag()) {
                this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", reg);
                //this.decreaseIndent();
 
@@ -1626,9 +1737,9 @@ public class AssemblyCodeGenerator {
         }
         else if( t instanceof IntType){
 
-            if(sto.flag == true) {
+            if(sto.flag == true || sto.getArrayTag()) {
                this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", reg);
-               this.decreaseIndent();
+               //this.decreaseIndent();
 
             }
 
@@ -1647,10 +1758,10 @@ public class AssemblyCodeGenerator {
             this.writeAssembly(ONE_PARAM, CALL_OP, PRINT_OP);
         }
         else if( t instanceof FloatType){
-
-            if(sto.flag == true) {
+ 
+            if(sto.flag == true || sto.getArrayTag()) {
                this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", reg);
-               this.decreaseIndent();
+               //this.decreaseIndent();
 
             }
             // ld [%l7], %f0
@@ -1796,7 +1907,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%l7", "%l7");
         this.decreaseIndent();
 
-        if(sto.flag == true) {
+        if(sto.flag == true || sto.getArrayTag()) {
             // ld    [%l7], %l7
            this.increaseIndent();
            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
