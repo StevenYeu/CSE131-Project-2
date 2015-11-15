@@ -1073,6 +1073,13 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
 
+
+        if(expr.getArrayTag()){
+             this.increaseIndent();
+             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
+             this.decreaseIndent();
+          }
+
         //float to float
         if(expr.getType() instanceof FloatType){
 
