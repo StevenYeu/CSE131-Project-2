@@ -2909,10 +2909,10 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
         //set #, %o1
-        int i = Integer.parseInt(theFuture.getOffset());
+        int i = ((ArrayType)expr.getType()).getTotalSize();
 
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(-i), "%o1");
+        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(i), "%o1");
         this.decreaseIndent();
 
         //add %o0, %o1, %o1
@@ -2967,23 +2967,47 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%o1", "%o1");
         this.decreaseIndent();
 
+        if(sto.flag == true){
+           if(sto.getType() instanceof FloatType){
 
-        if(sto.getType() instanceof FloatType){
-           //ld [%o0], %f0
-           this.increaseIndent();
-           this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%f0");
-           this.decreaseIndent();
-           //st [%f0], %o1
-           this.increaseIndent();
-           this.writeAssembly(TWO_PARAM, STORE_OP, "%f0", "[%o1]");
-           this.decreaseIndent();
+              //st [%o0], %o1
+              this.increaseIndent();
+              this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
+              this.decreaseIndent();
+
+           }
+           else{
+              //st %o0, [%o1]
+              this.increaseIndent();
+              this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
+              this.decreaseIndent();
+           }
 
         }
         else{
-           //st %o0, [%o1]
-           this.increaseIndent();
-           this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
-           this.decreaseIndent();
+
+           if(sto.getType() instanceof FloatType){
+              //ld [%o0], %f0
+              this.increaseIndent();
+              this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%f0");
+              this.decreaseIndent();
+              //st [%f0], %o1
+              this.increaseIndent();
+              this.writeAssembly(TWO_PARAM, STORE_OP, "%f0", "[%o1]");
+              this.decreaseIndent();
+
+           }
+           else{
+              //ld [%o0], %o0
+              this.increaseIndent();
+              this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
+              this.decreaseIndent();
+
+              //st %o0, [%o1]
+              this.increaseIndent();
+              this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
+              this.decreaseIndent();
+           }
         }
 
         // Start of loop body

@@ -927,7 +927,7 @@ class MyParser extends parser
 
 
         String s = opRef.toString();
-        
+
 		if (m_symtab.accessLocal(id) != null)
 		{
 			m_nNumErrors++;
@@ -936,6 +936,9 @@ class MyParser extends parser
 		}
         VarSTO sto = new VarSTO(id,iterType);  
 
+        if( s == "&"){
+            sto.flag= true;
+        }
         // Assembly Write: foreach stmt
         // set offset and base
         sto.setBase("%fp");
@@ -955,7 +958,9 @@ class MyParser extends parser
 
         if ( s == "&" ){
 
-            sto.setArrayTag(true);
+            //sto.setArrayTag(true);
+            // set ref flag 
+            sto.flag = true;
 
             if(!(((ArrayType)expr.getType()).getNext().isEquivalent(iterType))){
 
