@@ -716,6 +716,7 @@ ForeachStmt ::=     T_FOREACH T_LPAREN Type:_1 OptRef:_2 T_ID:_3 T_COLON Expr:_4
                     :}
                     CodeBlock
                     {:
+                        ((MyParser) parser).CallDoForEachEnd();
 
                         ((MyParser) parser).DoExitLoop();
                         ((MyParser) parser).DoBlockClose();

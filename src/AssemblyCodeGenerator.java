@@ -2802,6 +2802,202 @@ public class AssemblyCodeGenerator {
     }
 
     // ----------------------------------------------------------------
+    // This handles the foreach
+    // ----------------------------------------------------------------
+    public void DoForEach(STO expr, STO sto, String s, STO theFuture){
+
+        this.writeAssembly(NEWLINE);
+
+        //! comment 
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! forrach ( ... )");
+        this.decreaseIndent();
+        
+        //! traversal ptr = --array 
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! traversal ptr = --array");
+        this.decreaseIndent();
+
+        //set  offset, %o0 
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, expr.getOffset(), "%o0");
+        this.decreaseIndent();
+
+        //add base, %o0, %0
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(), "%o0", "%o0");
+        this.decreaseIndent();
+
+        //set 4, %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(sto.getType().getSize()), "%o1");
+        this.decreaseIndent();
+        
+        //sub %o0, %o1, %o0
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, SUB_OP, "%o0", "%o1", "%o0");
+        this.decreaseIndent();
+
+        //set future offset, %o1 
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, theFuture.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        //add future base, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, theFuture.getBase(), "%o1", "%o1");
+        this.decreaseIndent();
+
+        //st  %o0, [%o1]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
+        this.decreaseIndent();
+
+        // .$$.loopCheck.1:
+        this.writeAssembly(NO_PARAM, DOLLAR+"loopCheck."+String.valueOf(++loopCnt)+":");
+        wlabel.push(loopCnt);
+
+        //! comment 
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! ++traversal ptr");
+        this.decreaseIndent();
+
+        //set future offset, "%o1"
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, theFuture.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        //add future base, "%o1", %o1"
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, theFuture.getBase(), "%o1", "%o1");
+        this.decreaseIndent();
+
+        //ld [%o1], %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o0");
+        this.decreaseIndent();
+
+        // set 4, %o2 
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP,String.valueOf(sto.getType().getSize()), "%o2");
+        this.decreaseIndent();
+
+        //add %o0, %o2, %o0
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, "%o0", "%o2", "%o0");
+        this.decreaseIndent();
+
+        //st %o0, [%o1]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
+        this.decreaseIndent();
+
+
+        //! comment 
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! traversal ptr < array end addr");
+        this.decreaseIndent();
+
+        //set array offset, %o1 
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, expr.getOffset(), "%o0");
+        this.decreaseIndent();
+
+        //add array base, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(), "%o0", "%o0");
+        this.decreaseIndent();
+
+        //set #, %o1
+        int i = Integer.parseInt(theFuture.getOffset());
+
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(-i), "%o1");
+        this.decreaseIndent();
+
+        //add %o0, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, "%o0", "%o1", "%o1");
+        this.decreaseIndent();
+
+        //set future offset, %o0 
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, theFuture.getOffset(), "%o0");
+        this.decreaseIndent();
+
+        //add future base, %o0, %o0
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, theFuture.getBase(), "%o0", "%o0");
+        this.decreaseIndent();
+
+        //ld [%o0], %o0 
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
+        this.decreaseIndent();
+
+        //cmp %o0, %o1 
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, CMP_OP, "%o0", "%o1");
+        this.decreaseIndent();
+
+
+        //bge .$$.loopEnd.1
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, BGE_OP, DOLLAR+"loopEnd."+String.valueOf(loopCnt));
+        this.decreaseIndent();
+
+        //nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+        //! iterVar = currentElem
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! iterVar = currentElem");
+        this.decreaseIndent();
+        
+        
+        //set sto offset, %o1 
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        //add future base, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%o1", "%o1");
+        this.decreaseIndent();
+
+
+        if(sto.getType() instanceof FloatType){
+           //ld [%o0], %f0
+           this.increaseIndent();
+           this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%f0");
+           this.decreaseIndent();
+           //st [%f0], %o1
+           this.increaseIndent();
+           this.writeAssembly(TWO_PARAM, STORE_OP, "%f0", "[%o1]");
+           this.decreaseIndent();
+
+        }
+        else{
+           //st %o0, [%o1]
+           this.increaseIndent();
+           this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
+           this.decreaseIndent();
+        }
+
+        // Start of loop body
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! Start of loop body");
+        this.decreaseIndent();
+
+        // pure indent
+        this.increaseIndent();
+ 
+    }
+
+
+    // ----------------------------------------------------------------
     // This handles the while case with only literal as conditon
     // ----------------------------------------------------------------
 

@@ -934,7 +934,17 @@ class MyParser extends parser
 			m_errors.print(Formatter.toString(ErrorMsg.redeclared_id, id));
             return;
 		}
-        VarSTO sto = new VarSTO(id,iterType);        
+        VarSTO sto = new VarSTO(id,iterType);  
+
+        // Assembly Write: foreach stmt
+        // set offset and base
+        sto.setBase("%fp");
+        sto.setOffset(String.valueOf(++offsetCnt * -4));
+
+        ExprSTO theFuture = new ExprSTO("future");
+        theFuture.setBase("%fp");
+        theFuture.setOffset(String.valueOf(++offsetCnt * -4));
+        codegen.DoForEach(expr, sto, s, theFuture);
 		m_symtab.insert(sto);
 
         if (!(expr.getType() instanceof ArrayType)){
@@ -944,6 +954,8 @@ class MyParser extends parser
         }
 
         if ( s == "&" ){
+
+            sto.setArrayTag(true);
 
             if(!(((ArrayType)expr.getType()).getNext().isEquivalent(iterType))){
 
@@ -967,6 +979,10 @@ class MyParser extends parser
 		//VarSTO sto = new VarSTO(id,iterType);        
 		//m_symtab.insert(sto);
 	}
+
+    public void CallDoForEachEnd(){
+        codegen.DoWhileCloseLoop();
+    }
 
 
 	//----------------------------------------------------------------
@@ -1707,7 +1723,7 @@ class MyParser extends parser
             else{
                 ArrayType t = (ArrayType)a.getType();
                 Type baseType = t.getBaseType();
-                if(baseType instanceof IntType){
+                if(baseType instanceof IntType ){
                     int val = ((ConstSTO)b).getIntValue();
                     codegen.DoConstAssign(a, String.valueOf(val), b.getName());
                     
