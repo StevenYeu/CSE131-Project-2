@@ -1390,7 +1390,42 @@ public class AssemblyCodeGenerator {
     }
 
 
+    // ---------------------------------------------------------------------------------
+    //
+    // ---------------------------------------------------------------------------------
+    public void DoCtor(STO sto, STO func){
+        
+        this.writeAssembly(NEWLINE);
 
+        // ! s.name(...)
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! "+sto.getType().getName()+ "( ... )");
+        this.decreaseIndent();
+
+        // set  offset, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), "%o0");
+        this.decreaseIndent();
+
+        // add  %fp, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%o1", "%o1");
+        this.decreaseIndent();
+
+        // call  funccall
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, sto.getType().getName()+"."+sto.getType().getName()+"."+((FuncSTO)func).getAssemblyName());
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+
+
+
+    }
 
     /*
      * The next two methods handles func decl
@@ -1400,14 +1435,30 @@ public class AssemblyCodeGenerator {
     // func decl with no params (first half before the body) 
     // ----------------------------------------------------------------------------------
 
-    public void DoFuncStart(STO sto, String reg){
+    public void DoFuncStart(STO sto, String reg, String optstructname){
 
+        String SAVE;
+        if(optstructname != null){
+            String s = sto.getName();
+            if(sto.getName().charAt(0) == '~'){
+                s= s.replace('~', '$');
 
-        String SAVE = "SAVE." + sto.getName() + "."+ ((FuncSTO)sto).getAssemblyName();
+            }
+            
+            SAVE = "SAVE." +optstructname+"."+ s + "."+ ((FuncSTO)sto).getAssemblyName();
 
-        // label.params:
-        this.writeAssembly(NO_PARAM, sto.getName()+"."+((FuncSTO)sto).getAssemblyName() +":");
-        
+            // label.params:
+            this.writeAssembly(NO_PARAM, optstructname+"."+ s +"."+((FuncSTO)sto).getAssemblyName() +":");
+            
+
+        }
+        else{
+
+            SAVE = "SAVE." + sto.getName() + "."+ ((FuncSTO)sto).getAssemblyName();
+
+            // label.params:
+            this.writeAssembly(NO_PARAM, sto.getName()+"."+((FuncSTO)sto).getAssemblyName() +":");
+        }
         // set   SAVE.funcname.type, %g1
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, SET_OP, SAVE , reg);
@@ -1436,11 +1487,27 @@ public class AssemblyCodeGenerator {
     // func decl with no params (second half after the body)
     // ----------------------------------------------------------------------------------
 
-    public void DoFuncEnd(STO sto){
+    public void DoFuncEnd(STO sto, String optstructname){
+ 
+        String SAVE;
+        String NAME;
+        if(optstructname != null){
+            
+            String s = sto.getName();
+            if(sto.getName().charAt(0) == '~'){
+                s = s.replace('~', '$');
 
-        
-        String SAVE = "SAVE." + sto.getName() + "."+ ((FuncSTO)sto).getAssemblyName();
+            }
 
+            SAVE = "SAVE." +optstructname+"."+ s + "."+ ((FuncSTO)sto).getAssemblyName();
+            NAME = optstructname +"." + s + "."+ ((FuncSTO)sto).getAssemblyName();
+            
+        }
+        else{
+            SAVE = "SAVE." + sto.getName() + "."+ ((FuncSTO)sto).getAssemblyName();
+            NAME = sto.getName() + "."+ ((FuncSTO)sto).getAssemblyName();
+
+        }
         // for pure formating, reflect to indent in DoFuncStart
         this.decreaseIndent();
 
@@ -1453,7 +1520,7 @@ public class AssemblyCodeGenerator {
 
         // call    funcname.type.fini
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM,  CALL_OP, sto.getName() + "." + ((FuncSTO)sto).getAssemblyName() + ".fini"); 
+        this.writeAssembly(ONE_PARAM,  CALL_OP, NAME + ".fini"); 
         this.decreaseIndent();
 
         // nop
@@ -1479,7 +1546,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(NEWLINE);
 
         //funcname.type.fini
-        this.writeAssembly(NO_PARAM, sto.getName() + "." + ((FuncSTO)sto).getAssemblyName() + ".fini:");
+        this.writeAssembly(NO_PARAM, NAME+ ".fini:");
         
         //save   %sp, -96, %sp
         this.increaseIndent();

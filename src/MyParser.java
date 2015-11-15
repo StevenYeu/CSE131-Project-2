@@ -472,6 +472,13 @@ class MyParser extends parser
                     }
                     result.setIsModifiable(true);
                     result.setIsAddressable(true);
+                    //Assembly Write: structcall
+                    offsetCnt = offsetCnt + result.getType().getSize()/4;
+                    result.setOffset(String.valueOf(offsetCnt * -4));
+                    result.setBase("%fp");
+
+                    codegen.DoCtor(result, fun);
+                    
                     m_symtab.insert(result);
                     return;
 
@@ -552,7 +559,10 @@ class MyParser extends parser
 
                 }                        
             }
+            
 		    sto = new VarSTO(id,aTopType);
+
+            
             sto.setIsAddressable(true);
             sto.setIsModifiable(false);
         }
@@ -1288,6 +1298,7 @@ class MyParser extends parser
         }
         sto.getType().setSize(size);
 
+
 		m_symtab.insert(sto);
         ///m_symtab.setStruct(sto);
 	}
@@ -1312,6 +1323,24 @@ class MyParser extends parser
             FuncSTO sto = new FuncSTO(StructName, new StructType(StructName));
             //tag it
             sto.setOTag(true);
+            
+            m_symtab.insert(sto);
+            Scope def = m_symtab.getCurrScope();
+            ((StructType)m_symtab.getStruct().getType()).setScope(def);
+		        m_symtab.openScope();
+		        m_symtab.setFunc(sto);
+            this.DoFormalParams(new Vector<String>());
+            this.DoFuncDecl_2();
+
+            
+        }
+
+        if (m_symtab.accessLocal("~"+StructName) == null)
+        {
+            FuncSTO sto = new FuncSTO("~"+StructName, new StructType(StructName));
+            //tag it
+            sto.setOTag(true);
+            
             m_symtab.insert(sto);
             Scope def = m_symtab.getCurrScope();
             ((StructType)m_symtab.getStruct().getType()).setScope(def);
@@ -1477,34 +1506,20 @@ class MyParser extends parser
 		//WRITE ASSEMBLY:
         // the end of the function
         FuncSTO fun = m_symtab.getFunc();
-        /*
-        Vector<STO> s = m_symtab.getCurrScope().getLocals();
-        int offset = 0;
-        if(!s.isEmpty()) {
-           for(int i = 0; i < s.size(); i++) {
-              if(s.get(i).getType() instanceof ArrayType) {
-                 offset = offset + ((ArrayType)s.get(i).getType()).getTotalSize();
-              }
-              else {
-                  offset += s.get(i).getType().getSize();
-              }
-           }
 
-           fun.setOffset("+ " +Integer.toString(offset));
-        }
-        else {
-            fun.setOffset("+ 0");
-        }
-        */
 
         int val = offsetCnt * 4;
         fun.setOffset(" + " + String.valueOf(val));
 
         fun.setBase("92");
 
-        
-        codegen.DoFuncEnd(fun);
+        if(isInStruct){
 
+            codegen.DoFuncEnd(fun, StructName);
+        }
+        else{
+            codegen.DoFuncEnd(fun, null);
+        }
         m_symtab.closeScope();
 
 
@@ -1544,8 +1559,13 @@ class MyParser extends parser
 
         //WRITE ASSEMBLY
         //the start of the function
-
-        codegen.DoFuncStart(sto, "%g1");
+        if(isInStruct){
+             codegen.DoFuncStart(sto, "%g1", StructName);
+         
+        }
+        else{
+            codegen.DoFuncStart(sto, "%g1", null);
+        }
 
         codegen.DoParams(sto);
 
