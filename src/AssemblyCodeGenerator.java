@@ -2462,6 +2462,13 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, a.getBase(), "%o1", "%o1");
         this.decreaseIndent();
 
+        // for array
+        if(a.getArrayTag()){
+            //ld    [%o1], %o1
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1");
+            this.decreaseIndent();
+        }
         // st   %o2, [%o1]
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, STORE_OP, "%o2", "[%o1]");
@@ -2521,6 +2528,15 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, a.getBase(), "%o1", "%o1");
         this.decreaseIndent();
+
+        // for array
+        if(a.getArrayTag()){
+            //ld    [%o1], %o1
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1");
+            this.decreaseIndent();
+        }
+
 
         // st   %f2, [%o1]
         this.increaseIndent();
