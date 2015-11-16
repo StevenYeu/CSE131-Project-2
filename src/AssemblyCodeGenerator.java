@@ -1398,7 +1398,7 @@ public class AssemblyCodeGenerator {
 
 
     // ---------------------------------------------------------------------------------
-    // Struct constructor call
+    // Struct constructor call with no params
     // ---------------------------------------------------------------------------------
     public void DoCtor(STO sto, STO func){
         
@@ -1432,8 +1432,9 @@ public class AssemblyCodeGenerator {
 
     }
 
+
     // ----------------------------------------------------------------------------------
-    // Struct Usage
+    // Struct Var Usage
     // ----------------------------------------------------------------------------------
     public void DoStructCall(STO sto, STO result){
         
@@ -3454,7 +3455,7 @@ public class AssemblyCodeGenerator {
                     val = con.getIntValue();
                      // ! comment
                     this.increaseIndent();
-                    this.writeAssembly(NO_PARAM, "! "+param.getName()+"<-"+String.valueOf(val)); 
+                    this.writeAssembly(NO_PARAM, "! "+param.getName()+" <- "+String.valueOf(val)); 
                     this.decreaseIndent();
 
                     // ! set  # %o1
@@ -3593,7 +3594,7 @@ public class AssemblyCodeGenerator {
             
         }
 
-        //call foo.void
+        //call foo.param
         this.increaseIndent();
         this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)func).getAssemblyName()); 
         this.decreaseIndent();

@@ -508,6 +508,13 @@ class MyParser extends parser
                  }
                  result.setIsAddressable(true);
                  result.setIsModifiable(true);
+                 //Assembly Write: structcall
+                 offsetCnt = offsetCnt + result.getType().getSize()/4;
+                 result.setOffset(String.valueOf(offsetCnt * -4));
+                 result.setBase("%fp");
+
+                 offsetCnt = codegen.DoFuncCallParam(result, fun, params, offsetCnt);
+
                  m_symtab.insert(result);
                  return;
               }
