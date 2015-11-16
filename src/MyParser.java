@@ -33,6 +33,8 @@ class MyParser extends parser
     private int andor = 0;
     // keep track of the offset
     private int offsetCnt = 0;
+    // keep track of the offset in struct
+    private int structOffset = 0;
     // keep track of the line num
     private int m_nSavedLineCnt;
 
@@ -197,7 +199,13 @@ class MyParser extends parser
 	//
 	//----------------------------------------------------------------
 	void DoProgramEnd()
-	{
+    {
+        
+        // empty the buffer at the end of the file so nothing gets stucked
+        if(codegen.getholdOff()){
+            codegen.TimeToWrite();
+            codegen.setholdOff(false);
+        }
         codegen.dispose();
 		m_symtab.closeScope();
 	}
@@ -561,18 +569,24 @@ class MyParser extends parser
             }
             
 		    sto = new VarSTO(id,aTopType);
-
+            sto.setStructOffset(structOffset);
+            structOffset += ((ConstSTO)sizeStoTop).getIntValue();
             
             sto.setIsAddressable(true);
             sto.setIsModifiable(false);
         }
         else {
-		   sto = new VarSTO(id,t);
+		    sto = new VarSTO(id,t);
+            // set offset in struct 
+            sto.setStructOffset(structOffset++);
             sto.setIsAddressable(true);
             sto.setIsModifiable(true);
 
         
         }
+        sto.setStructTag(true);
+        
+        
         // set var in struct to mod-lval
 		m_symtab.insert(sto);
         Scope var = m_symtab.getCurrScope();
@@ -1299,6 +1313,8 @@ class MyParser extends parser
         sto.getType().setSize(size);
 
 
+        //reset offset in struct counter
+        structOffset = 0;
 		m_symtab.insert(sto);
         ///m_symtab.setStruct(sto);
 	}
@@ -1514,7 +1530,6 @@ class MyParser extends parser
         fun.setBase("92");
 
         if(isInStruct){
-
             codegen.DoFuncEnd(fun, StructName);
         }
         else{
@@ -2348,7 +2363,7 @@ class MyParser extends parser
  
         }
         else{
-
+            
             Scope curr = ((StructType)sto.getType()).getScope();
             Vector<STO> locals = curr.getLocals();
             for(int i = 0 ; i < locals.size(); i++){
@@ -2356,7 +2371,16 @@ class MyParser extends parser
                     if(locals.get(i) instanceof FuncSTO) {
                       this.setStructFunCall(true);
                     }
-                    return locals.get(i);
+                    // Assembly write: struct call
+                    STO result = locals.get(i);
+
+
+                    offsetCnt++;
+                    result.setOffset(String.valueOf(offsetCnt * -4));
+                    result.setBase("%fp");
+                    codegen.DoStructCall(sto, result);
+
+                    return result;
                 }
              }
              m_nNumErrors++;
@@ -2475,6 +2499,7 @@ class MyParser extends parser
             v.setIsModifiable(true);
             v.setIsAddressable(true);
 
+            //Write Assembly: array usage
             v.setOffset(String.valueOf(++offsetCnt * -4));
             v.setBase("%fp");
             v.setArrayTag(true);

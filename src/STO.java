@@ -15,8 +15,9 @@ abstract class STO
     public boolean flag = false; // check if parameter is by reference  or value
     private boolean thisTag = false;
     private boolean oTag = false;
-    private boolean notTag = false;
+    private boolean structTag = false;
     private boolean arrayTag = false;
+    private int structOffset = 0;
     private String offset;
     private String base;
     private int value;
@@ -166,12 +167,12 @@ abstract class STO
         value = i;
     }
 
-    public void setNotTag(boolean b) {
-        notTag = b;
+    public void setStructTag(boolean b) {
+        structTag = b;
     }
 
-    public boolean getNotTag(){
-        return notTag;
+    public boolean getStructTag(){
+        return structTag;
     }
 
     public void setArrayTag(boolean b){
@@ -182,6 +183,13 @@ abstract class STO
         return arrayTag;
     }
 
+    public void setStructOffset(int i){
+        structOffset = i * 4;
+    }
+
+    public int getStructOffset(){
+        return structOffset;
+    }
 
     
 
