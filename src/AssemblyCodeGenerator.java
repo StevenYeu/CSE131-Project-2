@@ -973,7 +973,7 @@ public class AssemblyCodeGenerator {
     }
 
 
-    public void DoGlobalVarInitVar(STO sto, STO expr){
+    public void DoGlobalVarInitVar(STO sto){
         
         this.writeAssembly(NEWLINE);
 
@@ -995,7 +995,7 @@ public class AssemblyCodeGenerator {
         // varname:
         this.writeAssembly(NO_PARAM,sto.getName()+":");
 
-        // .skip  # 4 
+        // .skip  # (not always 4, since we have struct) 
         this.increaseIndent();
         this.writeAssembly(ONE_PARAM, SKIP, String.valueOf(sto.getType().getSize())); 
         this.decreaseIndent();
@@ -1013,7 +1013,7 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
         // call the helper start
-        this.initGlobalVarStart(sto, expr);
+        this.initGlobalVarStart(sto);
 
 
 
@@ -1021,7 +1021,7 @@ public class AssemblyCodeGenerator {
     //---------------------------------------------------------------
     // A helper function that init var to another var, first half
     //---------------------------------------------------------------
-    public void initGlobalVarStart(STO sto, STO expr){
+    public void initGlobalVarStart(STO sto){
     
         // .$.init.varname:
         this.writeAssembly(NO_PARAM, INIT + sto.getName() + ":");
@@ -1288,7 +1288,7 @@ public class AssemblyCodeGenerator {
     //---------------------------------------------------------------
     // A helper function that init var to another var, second half
     //---------------------------------------------------------------
-    public void initGlobalVarEnd(STO sto, STO expr, STO func){
+    public void initGlobalVarEnd(STO sto, STO func){
         
         this.writeAssembly(NEWLINE);
 
@@ -1432,7 +1432,7 @@ public class AssemblyCodeGenerator {
 
     }
 
-    // functionf fot passing 
+    // functionf for passing 
     public void DoCtorThis(STO sto) {
 
          // set  offset, %o0
@@ -1443,6 +1443,67 @@ public class AssemblyCodeGenerator {
         // add  %fp, %o0, %o0
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%o0", "%o0");
+        this.decreaseIndent();
+
+    }
+
+    //----------------------
+    // Struct Assign
+    //----------------------
+    public void DoStructAssign(STO a, STO b){
+        
+        this.writeAssembly(NEWLINE);
+
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! "+ a.getName() +" = " + b.getName());
+        this.decreaseIndent();
+
+         // set  a.offset, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, a.getOffset(), "%o0");
+        this.decreaseIndent();
+
+        // add  %fp, %o0, %o0
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, a.getBase(), "%o0", "%o0");
+        this.decreaseIndent();
+
+         // call  struct name xxx
+        //this.increaseIndent();
+        //this.writeAssembly(ONE_PARAM, CALL_OP, a.getStructName()+"."+a.getName()+"."+a.getAssemblyName());
+        //this.decreaseIndent();
+
+        // nop
+        //this.increaseIndent();
+       // this.writeAssembly(NO_PARAM, NOP_OP);
+       // this.decreaseIndent();
+
+
+
+        // set  b.offset, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, b.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        // add  %fp, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, b.getBase(), "%o1", "%o1");
+        this.decreaseIndent();
+
+        //set struct size %o2
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(a.getType().getSize()), "%o2"); 
+        this.decreaseIndent();
+
+        //call memmove
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, "memmove");
+        this.decreaseIndent();
+
+        //nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
         this.decreaseIndent();
 
     }
@@ -1504,7 +1565,7 @@ public class AssemblyCodeGenerator {
 
 
     // ----------------------------------------------------------------------------------
-    // Struct Var Usage
+    // Struct Var self Usage
     // ----------------------------------------------------------------------------------
     public void DoThisCall(STO result){
         
@@ -3452,7 +3513,13 @@ public class AssemblyCodeGenerator {
 
         //call foo.void
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)sto).getAssemblyName()); 
+        // check if func in struct
+        if(sto.getStructTag()){
+            this.writeAssembly(ONE_PARAM, CALL_OP, sto.getStructName()+"."+sto.getName()+"."+((FuncSTO)sto).getAssemblyName()); 
+        }
+        else{
+            this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)sto).getAssemblyName()); 
+        }
         this.decreaseIndent();
 
         // nop
@@ -3479,7 +3546,13 @@ public class AssemblyCodeGenerator {
 
         //call foo.void
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)func).getAssemblyName()); 
+        // check if func is in struct
+        if(func.getStructTag()){
+            this.writeAssembly(ONE_PARAM, CALL_OP, func.getStructName()+"."+sto.getName()+"."+((FuncSTO)func).getAssemblyName()); 
+        }
+        else{
+            this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)func).getAssemblyName());
+        }
         this.decreaseIndent();
 
         // nop
@@ -3602,6 +3675,7 @@ public class AssemblyCodeGenerator {
                 }
             
             }
+            // var case
             else{
                     // ! comment
                     this.increaseIndent();
@@ -3622,6 +3696,14 @@ public class AssemblyCodeGenerator {
                        this.increaseIndent();
                        this.writeAssembly(THREE_PARAM, ADD_OP, value.getBase(), "%l7", "%l7");
                        this.decreaseIndent();
+
+                       // ld [%l7] %l7 ---- there is one case that's been needed 11/17
+                       //System.out.println(value.getArrayTag());
+                       if(value.getArrayTag()){
+                           this.increaseIndent();
+                           this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
+                           this.decreaseIndent();
+                       }
 
                        // ld [%l7], %o1
                        this.increaseIndent();
@@ -3683,11 +3765,11 @@ public class AssemblyCodeGenerator {
 
         //call foo.param
         this.increaseIndent();
-        if(!(func.getType() instanceof StructType)) {
+        if(!(func.getStructTag())) {
            this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)func).getAssemblyName()); 
         }
         else {
-           this.writeAssembly(ONE_PARAM, CALL_OP, func.getType().getName()+"."+func.getType().getName()+"."+((FuncSTO)func).getAssemblyName()); 
+           this.writeAssembly(ONE_PARAM, CALL_OP, func.getStructName()+"."+func.getType().getName()+"."+((FuncSTO)func).getAssemblyName()); 
 
         }
         this.decreaseIndent();
@@ -3844,7 +3926,13 @@ public class AssemblyCodeGenerator {
 
         //call name.param.fini
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)sto).getAssemblyName()+".fini"); 
+        //check if func in struct
+        if(sto.getStructTag()){
+            this.writeAssembly(ONE_PARAM, CALL_OP, sto.getStructName()+"."+sto.getName()+"."+((FuncSTO)sto).getAssemblyName()+".fini");
+        }
+        else{
+            this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)sto).getAssemblyName()+".fini");
+        }
         this.decreaseIndent();
 
 
@@ -3911,7 +3999,13 @@ public class AssemblyCodeGenerator {
 
         //call name.type.fini
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)sto).getAssemblyName()+".fini"); 
+        //check if fun in struct
+        if(sto.getStructTag()){
+            this.writeAssembly(ONE_PARAM, CALL_OP, sto.getStructName()+"."+sto.getName()+"."+((FuncSTO)sto).getAssemblyName()+".fini");
+        }
+        else{
+            this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)sto).getAssemblyName()+".fini");
+        }
         this.decreaseIndent();
 
 

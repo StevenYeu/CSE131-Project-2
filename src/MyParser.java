@@ -261,7 +261,7 @@ class MyParser extends parser
             }
             //var init
             else{
-                codegen.DoGlobalVarInitVar(sto, expr);
+                codegen.DoGlobalVarInitVar(sto);
             }
         }
         // local init
@@ -403,6 +403,7 @@ class MyParser extends parser
 	void DoCtorStructs(String id, Type t,Vector<STO> arraylist ,Vector<STO> params)
 	{
     
+    
     STO newCall = new VarSTO("new",t);// temp for new call 
     if(t instanceof ErrorType){
         return;
@@ -481,11 +482,36 @@ class MyParser extends parser
                     result.setIsModifiable(true);
                     result.setIsAddressable(true);
                     //Assembly Write: structcall
-                    offsetCnt = offsetCnt + result.getType().getSize()/4;
-                    result.setOffset(String.valueOf(offsetCnt * -4));
-                    result.setBase("%fp");
+                    if(m_symtab.getLevel() == 1){
+                        result.setOffset(id);
+                        result.setBase("%g0");
+                        codegen.DoGlobalVarInitVar(result);
+                        if(codegen.getholdOff()){
+                            codegen.TimeToWrite();
+                        }
+                        codegen.setholdOff(false);
+                  
+                    }
+                    else{
+                       offsetCnt = offsetCnt + result.getType().getSize()/4;
+                       result.setOffset(String.valueOf(offsetCnt * -4));
+                       result.setBase("%fp");
+                    }
+                    result.setStructName(fun.getStructName());
+                    result.setAssemblyName(((FuncSTO)fun).getAssemblyName());
 
                     codegen.DoCtor(result, fun);
+
+                    if(m_symtab.getLevel() == 1){
+
+                        //a sto for this init func, does nothing except holds offset and base
+                        STO func = new FuncSTO("tempFunc");
+                        int val = offsetCnt*4;
+                        func.setOffset("+"+String.valueOf(val));
+                        func.setBase("92");
+
+                        codegen.initGlobalVarEnd(result, func);
+                    }
                     
                     m_symtab.insert(result);
                     return;
@@ -510,14 +536,38 @@ class MyParser extends parser
                  result.setIsAddressable(true);
                  result.setIsModifiable(true);
                  //Assembly Write: structcall
-                  offsetCnt = offsetCnt + result.getType().getSize()/4;
-                  result.setOffset(String.valueOf(offsetCnt * -4));
-                  result.setBase("%fp");
+                  if(m_symtab.getLevel() == 1){
+                     result.setOffset(id);
+                     result.setBase("%g0");
+                     codegen.DoGlobalVarInitVar(result);
+                     if(codegen.getholdOff()){
+                         codegen.TimeToWrite();
+                     }
+                     codegen.setholdOff(false);
+                  
+                  }
+                  else{
+                     offsetCnt = offsetCnt + result.getType().getSize()/4;
+                     result.setOffset(String.valueOf(offsetCnt * -4));
+                     result.setBase("%fp");
+                  }
+                  result.setAssemblyName(((FuncSTO)fun).getAssemblyName());
+                  result.setStructName(fun.getStructName());
                   codegen.DoCtorThis(result);
                   offsetCnt = codegen.DoFuncCallParam(result, fun, params, offsetCnt);
                
-                 m_symtab.insert(result);
-                 return;
+                  if(m_symtab.getLevel() == 1){
+                      //a sto for this init func, does nothing except holds offset and base
+                      STO func = new FuncSTO("tempFunc");
+                      int val = offsetCnt*4;
+                      func.setOffset("+"+String.valueOf(val));
+                      func.setBase("92");
+
+                      codegen.initGlobalVarEnd(result, func);
+                  }
+                  
+                  m_symtab.insert(result);
+                  return;
               }
           }
        }
@@ -579,7 +629,7 @@ class MyParser extends parser
 		    sto = new VarSTO(id,aTopType);
             sto.setStructOffset(structOffset);
             structOffset += ((ConstSTO)sizeStoTop).getIntValue();
-            
+            sto.setArrayTag(true); 
             sto.setIsAddressable(true);
             sto.setIsModifiable(false);
         }
@@ -830,7 +880,7 @@ class MyParser extends parser
                         codegen.setholdOff(false);
 
                         // init func header
-                        codegen.DoGlobalVarInitVar(sto, expr);
+                        codegen.DoGlobalVarInitVar(sto);
 
                         // write when the hold off is off
                         codegen.TimeToWrite();
@@ -861,7 +911,7 @@ class MyParser extends parser
 
 
                         // init func ender
-                        codegen.initGlobalVarEnd(sto, expr, func);
+                        codegen.initGlobalVarEnd(sto, func);
 
                     }
                 }
@@ -1590,6 +1640,8 @@ class MyParser extends parser
         //the start of the function
         if(isInStruct){
              codegen.DoFuncStart(sto, "%g1", StructName);
+             sto.setStructTag(true);
+             sto.setStructName(StructName);
          
         }
         else{
@@ -1780,6 +1832,7 @@ class MyParser extends parser
             }
             // array case
             else{
+      
                 ArrayType t = (ArrayType)a.getType();
                 Type baseType = t.getBaseType();
                 if(baseType instanceof IntType ){
@@ -1839,6 +1892,9 @@ class MyParser extends parser
 
                 codegen.DoVarAssign(a, b, promote);
                   
+            }
+            else if(a.getType() instanceof StructType){
+                codegen.DoStructAssign(a, b);
             }
             else{
        
@@ -2401,8 +2457,9 @@ class MyParser extends parser
                       this.setStructFunCall(true);
                     }
                     // Assembly write: struct call
+       
                     STO result = locals.get(i);
-
+                    result.setArrayTag(locals.get(i).getArrayTag());
 
                     offsetCnt++;
                     result.setOffset(String.valueOf(offsetCnt * -4));
@@ -3281,7 +3338,10 @@ class MyParser extends parser
                 exp = String.valueOf(i);
             }
 
+            
             codegen.DoReturnLit(m_symtab.getFunc(), exp, expr, promote);
+            
+            
         }
         // for all other cases
         else{
