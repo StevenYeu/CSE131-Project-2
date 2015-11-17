@@ -492,6 +492,7 @@ class MyParser extends parser
 
               }
               else { // case if nonzero params 
+                 //codegen.DoThisParam(); 
                  result = this.DoFunctionCall(sto,params,overloaded);
                   //if(result instanceof ErrorSTO) {return;}
                  if(this.getNewCall() ) {
@@ -509,12 +510,12 @@ class MyParser extends parser
                  result.setIsAddressable(true);
                  result.setIsModifiable(true);
                  //Assembly Write: structcall
-                 offsetCnt = offsetCnt + result.getType().getSize()/4;
-                 result.setOffset(String.valueOf(offsetCnt * -4));
-                 result.setBase("%fp");
-
-                 offsetCnt = codegen.DoFuncCallParam(result, fun, params, offsetCnt);
-
+                  offsetCnt = offsetCnt + result.getType().getSize()/4;
+                  result.setOffset(String.valueOf(offsetCnt * -4));
+                  result.setBase("%fp");
+                  codegen.DoCtorThis(result);
+                  offsetCnt = codegen.DoFuncCallParam(result, fun, params, offsetCnt);
+               
                  m_symtab.insert(result);
                  return;
               }
@@ -1565,6 +1566,12 @@ class MyParser extends parser
 		// insert parameters here
         FuncSTO sto = m_symtab.getFunc();
 
+        
+        // Add "this" parameter for struct
+        if(isInStruct) {
+           paramCnt++;
+        }
+
         for(int i = 0; i < params.size(); i++){
 
             STO par = this.ProcessParams(params.get(i));
@@ -1587,6 +1594,11 @@ class MyParser extends parser
         }
         else{
             codegen.DoFuncStart(sto, "%g1", null);
+        }
+
+        if(isInStruct) {
+           codegen.DoThisParam();
+
         }
 
         codegen.DoParams(sto);
@@ -2093,11 +2105,7 @@ class MyParser extends parser
               if(match == params.size()) {
                  result = new ExprSTO(fun.getName(),fun.getType());
                  // Write Assembly: set offset and base
-                 offsetCnt ++;
-                 int val = -offsetCnt * ((FuncSTO)fun).getReturnType().getSize();
-                 String offset = String.valueOf(val);
-                 result.setOffset(offset);
-                 result.setBase("%fp");
+
 
                  if(this.GetSavedLineCnt() == 0){
                      this.SaveLineCnt();
@@ -2113,7 +2121,16 @@ class MyParser extends parser
                      codegen.setholdOff(true);
                  }
 
-                 offsetCnt = codegen.DoFuncCallParam(result, fun, params, offsetCnt);
+                 if(!(func.getType() instanceof StructType)) {
+                   offsetCnt ++;
+                   int val = -offsetCnt * ((FuncSTO)fun).getReturnType().getSize();
+                   String offset = String.valueOf(val);
+                   result.setOffset(offset);
+                   result.setBase("%fp");
+                   offsetCnt = codegen.DoFuncCallParam(result, fun, params, offsetCnt);
+
+                 }
+
 
                  // - end
                  if(fun.flag == true) { // return by ref set to Mod L
@@ -2360,7 +2377,12 @@ class MyParser extends parser
                     if(locals.get(i) instanceof FuncSTO) {
                       this.setStructFunCall(true);
                     }
-                    return locals.get(i);
+                    STO result= locals.get(i);
+                    offsetCnt++;
+                    result.setOffset(String.valueOf(offsetCnt * -4));
+                    result.setBase("%fp");
+                    codegen.DoThisCall(result);
+                    return result;
                 }
              }
              m_nNumErrors++;

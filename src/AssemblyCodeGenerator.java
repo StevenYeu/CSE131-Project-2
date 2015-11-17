@@ -1432,6 +1432,21 @@ public class AssemblyCodeGenerator {
 
     }
 
+    // functionf fot passing 
+    public void DoCtorThis(STO sto) {
+
+         // set  offset, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), "%o0");
+        this.decreaseIndent();
+
+        // add  %fp, %o0, %o0
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%o0", "%o0");
+        this.decreaseIndent();
+
+    }
+
 
     // ----------------------------------------------------------------------------------
     // Struct Var Usage
@@ -1454,6 +1469,67 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%o0", "%o0");
         this.decreaseIndent();
+
+        //set offset in struct, %o1
+        this.increaseIndent();  
+        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(result.getStructOffset()), "%o1");
+        this.decreaseIndent();
+
+        //add %g0, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, "%g0", "%o1", "%o1");
+        this.decreaseIndent();
+
+        //add %o0, %o1, %o0
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, "%o0", "%o1", "%o0");
+        this.decreaseIndent();
+
+        //set result.offset %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, result.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        //add result.base %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, result.getBase(),"%o1", "%o1");
+        this.decreaseIndent();
+
+        //st %o0, [%o1]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
+        this.decreaseIndent();
+
+    }
+
+
+    // ----------------------------------------------------------------------------------
+    // Struct Var Usage
+    // ----------------------------------------------------------------------------------
+    public void DoThisCall(STO result){
+        
+        this.writeAssembly(NEWLINE);
+
+        //! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! this."+result.getName());
+        this.decreaseIndent();
+
+        //set sto.offset, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, "68", "%o0");
+        this.decreaseIndent();
+
+        //add sto.base, %o0, %o0
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, "%fp","%o0", "%o0");
+        this.decreaseIndent();
+
+        // ld 
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
+        this.decreaseIndent();
+
 
         //set offset in struct, %o1
         this.increaseIndent();  
@@ -3386,6 +3462,9 @@ public class AssemblyCodeGenerator {
 
     }
 
+
+
+
     //------------------------------------------
     // handles func call with no params
     //------------------------------------------
@@ -3436,10 +3515,17 @@ public class AssemblyCodeGenerator {
 
         // ! comment
         this.increaseIndent();
-        this.writeAssembly(NO_PARAM, "! " + sto.getName()+"(...)"); 
+        this.writeAssembly(NO_PARAM, "! " + func.getName()+"(...)"); 
         this.decreaseIndent();
 
         Vector<STO> paramlist = ((FuncSTO)func).getParams();
+
+        int reg = 0;
+
+        if((func.getType() instanceof StructType)) {
+
+            reg = 1;
+        }
 
         for(int i = 0; i < paramlist.size(); i++){
             STO param = paramlist.get(i);
@@ -3460,7 +3546,7 @@ public class AssemblyCodeGenerator {
 
                     // ! set  # %o1
                     this.increaseIndent();
-                    this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(val), "%o"+String.valueOf(i));
+                    this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(val), "%o"+String.valueOf(reg));
                     this.decreaseIndent();
 
 
@@ -3480,7 +3566,7 @@ public class AssemblyCodeGenerator {
 
                         //set val, %o#
                         this.increaseIndent();
-                        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(val), "%o"+String.valueOf(i));
+                        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(val), "%o"+String.valueOf(reg));
                         this.decreaseIndent();
 
                         STO promote = new ExprSTO("promote");
@@ -3488,12 +3574,12 @@ public class AssemblyCodeGenerator {
                         promote.setBase("%fp");
                         promote.setOffset(String.valueOf(-offset*4));
 
-                        this.DoTypePromotion(promote, "%f"+String.valueOf(i), "%o"+String.valueOf(i));
+                        this.DoTypePromotion(promote, "%f"+String.valueOf(reg), "%o"+String.valueOf(reg));
 
                     }
                     else{
                         // rodata for float 
-                        this.DoFloatRoData(value,"%f"+String.valueOf(i));
+                        this.DoFloatRoData(value,"%f"+String.valueOf(reg));
                     } 
                     // ! set  # %o1
                    // this.increaseIndent();
@@ -3510,7 +3596,7 @@ public class AssemblyCodeGenerator {
 
                     // ! set  # %o1
                     this.increaseIndent();
-                    this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(val), "%o"+String.valueOf(i));
+                    this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(val), "%o"+String.valueOf(reg));
                     this.decreaseIndent();
 
                 }
@@ -3542,7 +3628,7 @@ public class AssemblyCodeGenerator {
                        if(param.getType() instanceof FloatType) {
                           if(value.getType() instanceof IntType){
                              // Type promotion
-                             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o"+String.valueOf(i));
+                             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o"+String.valueOf(reg));
                              
                              STO promote = new ExprSTO("promote");
                              offset ++;
@@ -3550,17 +3636,17 @@ public class AssemblyCodeGenerator {
                              promote.setOffset(String.valueOf(-offset*4));
 
                              this.decreaseIndent(); 
-                             this.DoTypePromotion(promote, "%f"+String.valueOf(i), "%o"+String.valueOf(i));
+                             this.DoTypePromotion(promote, "%f"+String.valueOf(reg), "%o"+String.valueOf(reg));
                              this.increaseIndent();
                           }
                           else{
-                             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%f"+String.valueOf(i));
+                             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%f"+String.valueOf(reg));
                           }
 
                        }
                        else {
                           
-                          this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o"+String.valueOf(i));
+                          this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o"+String.valueOf(reg));
                           
                        }
                        this.decreaseIndent();
@@ -3569,19 +3655,19 @@ public class AssemblyCodeGenerator {
                     else{
                        // set  offset %o1
                        this.increaseIndent();
-                       this.writeAssembly(TWO_PARAM, SET_OP, value.getOffset(), "%o"+String.valueOf(i));
+                       this.writeAssembly(TWO_PARAM, SET_OP, value.getOffset(), "%o"+String.valueOf(reg));
                        this.decreaseIndent();
 
                        // add base %o1, %o1
                        this.increaseIndent();
-                       this.writeAssembly(THREE_PARAM, ADD_OP, value.getBase(), "%o"+String.valueOf(i), "%o"+String.valueOf(i));
+                       this.writeAssembly(THREE_PARAM, ADD_OP, value.getBase(), "%o"+String.valueOf(reg), "%o"+String.valueOf(reg));
                        this.decreaseIndent();
 
                        // ADDED if arg passed in to function param is a ref
                        if(value.flag == true) {
                           // ld [%l7], %o1
                           this.increaseIndent();
-                          this.writeAssembly(TWO_PARAM, LOAD_OP,  "["+"%o"+String.valueOf(i)+"]", "%o"+String.valueOf(i));
+                          this.writeAssembly(TWO_PARAM, LOAD_OP,  "["+"%o"+String.valueOf(reg)+"]", "%o"+String.valueOf(reg));
                           this.decreaseIndent();
 
                        }
@@ -3590,13 +3676,20 @@ public class AssemblyCodeGenerator {
                     }
 
             }
+            reg++;
             
             
         }
 
         //call foo.param
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)func).getAssemblyName()); 
+        if(!(func.getType() instanceof StructType)) {
+           this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)func).getAssemblyName()); 
+        }
+        else {
+           this.writeAssembly(ONE_PARAM, CALL_OP, func.getType().getName()+"."+func.getType().getName()+"."+((FuncSTO)func).getAssemblyName()); 
+
+        }
         this.decreaseIndent();
 
         // nop
@@ -3604,7 +3697,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(NO_PARAM, NOP_OP); 
         this.decreaseIndent();
 
-        if( !(func.getType() instanceof VoidType) ) {
+        if( !(func.getType() instanceof VoidType) && !(func.getType() instanceof StructType) ) {
            // set offset, %o1
            this.increaseIndent();
            this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), "%o1"); 
@@ -3640,6 +3733,12 @@ public class AssemblyCodeGenerator {
     public void DoParams(STO sto){
       
         Vector<STO> paramlist = ((FuncSTO)sto).getParams();
+        
+        // for struct ctor
+        int reg = 0;
+        if(sto.getType() instanceof StructType) {
+           reg = 1;
+        }
 
         for(int i = 0; i < paramlist.size(); i++){
             // st     reg, [%fp+68]
@@ -3649,14 +3748,22 @@ public class AssemblyCodeGenerator {
 
             // float case uses %f
             if(paramlist.get(i).getType() instanceof FloatType && paramlist.get(i).flag == false) {
-                this.writeAssembly(TWO_PARAM, STORE_OP, "%f"+String.valueOf(i), "["+base+"+"+offset+"]");
+                this.writeAssembly(TWO_PARAM, STORE_OP, "%f"+String.valueOf(reg), "["+base+"+"+offset+"]");
    
             }
             else { // other
-               this.writeAssembly(TWO_PARAM, STORE_OP, "%i"+String.valueOf(i), "["+base+"+"+offset+"]");
+               this.writeAssembly(TWO_PARAM, STORE_OP, "%i"+String.valueOf(reg), "["+base+"+"+offset+"]");
             }
             this.decreaseIndent();
+            reg++;
         }
+
+    }
+
+    public void DoThisParam() {
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%i"+String.valueOf(0), "[" + "%fp" + "+" + "68" + "]");
+        this.decreaseIndent();
 
     }
 
@@ -3877,9 +3984,6 @@ public class AssemblyCodeGenerator {
 
 
     }
-
-
-
 
 
 
