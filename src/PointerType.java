@@ -54,16 +54,6 @@ class PointerType extends CompositeType{
         }
     }
 
-    public void setBaseType(Type t) {
-         if( numPointers == 1 ) {
-             next = t;
-        }
-        else {
-            this.setBaseType(((PointerType)next).getBaseType());
-        }
-
-    }
-
     public void addNext(Type t) {
         if( next == null){
             next = t;
