@@ -403,57 +403,62 @@ class MyParser extends parser
 	void DoCtorStructs(String id, Type t,Vector<STO> arraylist ,Vector<STO> params)
 	{
     
-    STO newCall = new VarSTO("new",t);// temp for new call 
-    if(t instanceof ErrorType){
-        return;
-    }
+	    
 
-  	if (m_symtab.accessLocal(id) != null)
-    {
-       if(this.getNewCall()) { // check if new call
-           newCall = m_symtab.accessLocal(id);
-       }
-       else { // if not new call
-          m_nNumErrors++;
-          m_errors.print(Formatter.toString(ErrorMsg.redeclared_id, id));
-          m_symtab.insert(new ErrorSTO(id)); // not sure if correct
-          return;
-       }
-      
-    }
-    Type arr = new ArrayType("temp",0,0);
+	    STO newCall = new VarSTO(id,t);// temp for new call 
+	    if(t instanceof ErrorType){
+	        return;
+	    }
 
-
-    if(!arraylist.isEmpty()) {
-      arr =this.CreateArrayType(t,arraylist);
-      if (arr instanceof ErrorType) {
-        this.setNewCall(false);
-        return;
-      }
-    }
+	  	if (m_symtab.accessLocal(id) != null)
+	    {
+	       if(this.getNewCall()) { // check if new call
+	           newCall = m_symtab.accessLocal(id);
+	       }
+	       else { // if not new call
+	          m_nNumErrors++;
+	          m_errors.print(Formatter.toString(ErrorMsg.redeclared_id, id));
+	          m_symtab.insert(new ErrorSTO(id)); // not sure if correct
+	          return;
+	       }
+	      
+	    }
+	    Type arr = new ArrayType("temp",0,0);
 
 
-    Type typ;
-     STO fun; // var for current func
-     Vector<STO> funPar; // vector for current funcs params
-     STO curPar; // calling param being check
-     STO funsCurPar; // cun func para in table being checked against 
-     Type curType; // the type of calling param
-     Type funsCurType; // the type of the func param
-     if(isInStruct) {
-       if(t.getName().equals(m_symtab.getStruct().getName())) {
-          typ = m_symtab.getStruct().getType();
-       }
-       else {
-        typ = t;
-       }
-     }
-     else {
-      typ = t;
-     }
-     STO result = new VarSTO(t.getName(),typ); // struct var thats goes int the table
-     STO sto = new VarSTO(t.getName(),typ); // temp
-     Vector<STO> overloaded= ((StructType)typ).OverloadCheckStructCall(typ.getName()); // of constructors
+	    if(!arraylist.isEmpty()) {
+	      arr =this.CreateArrayType(t,arraylist);
+	      if (arr instanceof ErrorType) {
+	        this.setNewCall(false);
+	        return;
+	      }
+	    }
+
+
+	    Type typ;
+	     STO fun; // var for current func
+	     Vector<STO> funPar; // vector for current funcs params
+	     STO curPar; // calling param being check
+	     STO funsCurPar; // cun func para in table being checked against 
+	     Type curType; // the type of calling param
+	     Type funsCurType; // the type of the func param
+	     if(isInStruct) {
+	       if(t.getName().equals(m_symtab.getStruct().getName())) {
+	          typ = m_symtab.getStruct().getType();
+	       }
+	       else {
+	        typ = t;
+	       }
+	     }
+	     else {
+	      typ = t;
+	     }
+	     STO result = new VarSTO(t.getName(),typ); // struct var thats goes int the table
+
+        
+         Vector<STO> overloaded = ((StructType)typ).OverloadCheckStructCall(typ.getName()); // of constructors
+
+	     STO sto = new VarSTO(t.getName(),typ); // temp
 		 if (overloaded.size() == 1) { // non overload case
           int overParSize = ((FuncSTO)overloaded.get(0)).getParams().size();
           int parSize = params.size();
@@ -461,7 +466,7 @@ class MyParser extends parser
           if(overParSize != parSize) { // if have different number of params print error
              m_nNumErrors++;
 	           m_errors.print(Formatter.toString(ErrorMsg.error5n_Call,parSize,overParSize));
-             this.setNewCall(false);
+               this.setNewCall(false);
 	           return;
           }
           else {
@@ -521,7 +526,7 @@ class MyParser extends parser
               }
           }
        }
-       else { // overloadcase
+       else if (overloaded.size() > 1) { // overloadcase
            result = this.DoOverloadCall(sto,params,overloaded);
            if(this.getNewCall() ) {
              result = newCall;
@@ -548,7 +553,6 @@ class MyParser extends parser
     // decl of var in struct
     void DoStructVarDecl(Type t, String id, Vector<STO> arraylist)
 	{
-		
         VarSTO sto;
         if (m_symtab.accessLocal(id) != null)
 		{
@@ -1314,6 +1318,13 @@ class MyParser extends parser
                 }
                 else {
                   size = size + elm.getType().getSize();
+                  if(elm.getType() instanceof PointerType){
+                  	if( ((PointerType)elm.getType()).getBaseType() instanceof StructType) {
+                      if( ((PointerType)elm.getType()).getBaseType().getName().equals(scopeStruct.getName()) ) {
+                        ((PointerType)locals.get(i).getType()).setBaseType(scopeStruct); 
+                      }
+					          }
+                  } 
                 } 
             }
 
@@ -3524,7 +3535,6 @@ class MyParser extends parser
         }
         else {
         
-           
            Scope s = ((StructType)((PointerType)sto.getType()).getBaseType()).getScope();
            Vector<STO> locals = s.getLocals();
            for (int i = 0;i < locals.size() ; i++) {
@@ -3543,8 +3553,21 @@ class MyParser extends parser
 
     // decl a pointer
     Type DoPointer(Type t, Vector<STO> ptrlist){
+    	/* ADDED 11/16 */
+    	Type type = new FloatType("temp");
+    	if(t instanceof StructType) {
+    		if(isInStruct) {
+    		   type = m_symtab.getStruct().getType();
+    		}
+    		else {
+    			type = m_symtab.accessGlobal(t.getName()).getType();
+    		}
+    	}
+    	else {
+    		type = t;
+    	}
     
-        PointerType TopType = new PointerType(t.getName() + this.PrintStar(ptrlist.size()));
+        PointerType TopType = new PointerType(type.getName() + this.PrintStar(ptrlist.size()));
         TopType.setNumPointers(ptrlist.size());
         if(ptrlist.isEmpty()){
             return t;
@@ -3555,7 +3578,7 @@ class MyParser extends parser
                 TopType.addNext(t);
             }
             else{
-                PointerType typ = new PointerType(t.getName()+ this.PrintStar(numPtr-i));
+                PointerType typ = new PointerType(type.getName()+ this.PrintStar(numPtr-i));
                 typ.setNumPointers(numPtr-i);
                 TopType.addNext(typ);
             }
@@ -3621,6 +3644,8 @@ class MyParser extends parser
     }
 
     STO DoNew(STO sto, Vector<STO> params){
+
+
         if(sto instanceof ErrorSTO)
             return sto;
 
@@ -3641,13 +3666,13 @@ class MyParser extends parser
                     return sto;
                 }
                 else if(((PointerType)sto.getType()).getNext() instanceof StructType){
-                   this.DoCtorStructs("new" + sto.getName(), ((PointerType)sto.getType()).getNext(), new Vector<STO>() ,params);
+                    this.DoCtorStructs("new" + sto.getName(), ((PointerType)sto.getType()).getNext(), new Vector<STO>() ,params);
         
                 }
             }
             else{
                 if(((PointerType)sto.getType()).getNext() instanceof StructType){
-                   this.DoCtorStructs("new" + sto.getName(), ((PointerType)sto.getType()).getNext(), new Vector<STO>()  ,params);
+                    this.DoCtorStructs("new" + sto.getName(), ((PointerType)sto.getType()).getNext(), new Vector<STO>()  ,params);
         
                 }
                 else if(!(((PointerType)sto.getType()).getNext() instanceof StructType)) {
