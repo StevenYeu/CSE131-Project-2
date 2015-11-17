@@ -77,6 +77,15 @@ class PointerType extends CompositeType{
        return numPointers;
     }
 
+    public void setBaseType(Type t){
+       if( numPointers == 1) {
+           next = t;
+       }
+       else{
+           this.setBaseType(((PointerType)next).getBaseType());
+       }
+    }
+
 
 
 }

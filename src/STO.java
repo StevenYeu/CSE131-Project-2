@@ -21,8 +21,8 @@ abstract class STO
     private String offset;
     private String base;
     private int value;
-
-
+    private String structName;
+    private String AssemblyName;
 	//----------------------------------------------------------------
 	//
 	//----------------------------------------------------------------
@@ -191,11 +191,21 @@ abstract class STO
         return structOffset;
     }
 
-    
+    public void setStructName(String s){
+        structName = s;
+    }
 
+    public String getStructName(){
+        return structName;
+    }
 
+    public void setAssemblyName(String s){
+        AssemblyName = s;
+    }
 
-
+    public String getAssemblyName(){
+       return AssemblyName;
+    }
 	//----------------------------------------------------------------
 	//	It will be helpful to ask a STO what specific STO it is.
 	//	The Java operator instanceof will do this, but these methods 
