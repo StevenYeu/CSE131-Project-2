@@ -1421,7 +1421,7 @@ public class AssemblyCodeGenerator {
 
         // call  funccall
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, CALL_OP, sto.getType().getName()+"."+sto.getType().getName()+"."+((FuncSTO)func).getAssemblyName());
+        this.writeAssembly(ONE_PARAM, CALL_OP, sto.getType().getName()+"."+sto.getType().getName()+"."+func.getAssemblyName());
         this.decreaseIndent();
 
         // nop
@@ -3768,8 +3768,8 @@ public class AssemblyCodeGenerator {
         if(!(func.getStructTag())) {
            this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)func).getAssemblyName()); 
         }
-        else {
-           this.writeAssembly(ONE_PARAM, CALL_OP, func.getStructName()+"."+func.getType().getName()+"."+((FuncSTO)func).getAssemblyName()); 
+        else { // note change --11/17
+           this.writeAssembly(ONE_PARAM, CALL_OP, func.getStructName()+"."+func.getName()+"."+func.getAssemblyName()); 
 
         }
         this.decreaseIndent();

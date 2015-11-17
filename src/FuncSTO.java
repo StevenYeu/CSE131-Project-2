@@ -74,7 +74,11 @@ class FuncSTO extends STO
 
     public Vector<STO> getParams() {
         return params;
-    } 
+    }
+
+    public void setParams(Vector<STO> p) {
+       params = p;
+    }
 
     public boolean getIsStruct() {
        return isStruct;
