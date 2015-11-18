@@ -921,6 +921,104 @@ public class AssemblyCodeGenerator {
 
     }
 
+
+    public void DoStructArray(STO array, STO offset, int  length) {
+        this.writeAssembly(NEWLINE);
+
+         // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! "+array.getName()+"["+String.valueOf(length)+"]");
+        this.decreaseIndent();
+
+        // set #, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(length), "%o0");
+        this.decreaseIndent();
+
+         int total = ((ArrayType)array.getType()).getSize();
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(total), "%o1");
+        this.decreaseIndent();
+
+        // call  .$$.arrCheck
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, DOLLAR+"arrCheck");
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+        // set  base type size, %o0 
+        int baseSize = ((ArrayType)array.getType()).getBaseType().getSize();
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(baseSize),"%o1");
+        this.decreaseIndent();
+
+        // call .mul
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, MUL_OP);
+        this.decreaseIndent();
+
+        // nop 
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+        //mov %o0, %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, MOV_OP, "%o0", "%o1");
+        this.decreaseIndent();
+
+        //set offset, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, array.getOffset(), "%o0");
+        this.decreaseIndent();
+
+        //add base, "%o0", "%o0"
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, array.getBase(), "%o0", "%o0");
+        this.decreaseIndent();
+    
+        if(array.getStructTag()){
+            // ld [%o0], %o0
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
+            this.decreaseIndent();
+        }
+        //call .$$.ptrCheck
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, DOLLAR+"ptrCheck");
+        this.decreaseIndent();
+
+        //nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+        //add %o0, %o1, %o0
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, "%o0", "%o1", "%o0");
+        this.decreaseIndent();
+
+        //set result.offset, %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, offset.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        //add %fp, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, offset.getBase(),"%o1", "%o1");
+        this.decreaseIndent();
+
+        //st  %o0, [%o1]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
+        this.decreaseIndent();
+
+    }
+
     // ----------------------------------------------------------------------------------
     // This is for global/static init var decl
     // ----------------------------------------------------------------------------------
@@ -1406,7 +1504,7 @@ public class AssemblyCodeGenerator {
 
         // ! s.name(...)
         this.increaseIndent();
-        this.writeAssembly(NO_PARAM, "! "+sto.getName()+"."+sto.getType().getName()+ "( ... )");
+        this.writeAssembly(NO_PARAM, "! "+sto.getName()+"."+func.getName()+ "( ... )");
         this.decreaseIndent();
 
         // set  offset, %o0
@@ -1421,7 +1519,14 @@ public class AssemblyCodeGenerator {
 
         // call  funccall
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, CALL_OP, sto.getType().getName()+"."+sto.getType().getName()+"."+func.getAssemblyName());
+        if(sto.getType() instanceof ArrayType) {
+            this.writeAssembly(ONE_PARAM, CALL_OP, ((ArrayType)sto.getType()).getBaseType().getName()+"."+func.getName()+"."+func.getAssemblyName());
+
+        }
+        else {
+            this.writeAssembly(ONE_PARAM, CALL_OP, sto.getType().getName()+"."+sto.getType().getName()+"."+func.getAssemblyName());
+
+        }
         this.decreaseIndent();
 
         // nop
@@ -1432,7 +1537,7 @@ public class AssemblyCodeGenerator {
 
     }
 
-    // functionf for passing 
+    // functionf for passing "this" parameter
     public void DoCtorThis(STO sto) {
 
          // set  offset, %o0
@@ -1530,6 +1635,12 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%o0", "%o0");
         this.decreaseIndent();
+
+        if(sto.getArrayTag()) {
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, LOAD_OP,"[%o0]", "%o0");
+            this.decreaseIndent();
+        }
 
         //set offset in struct, %o1
         this.increaseIndent();  

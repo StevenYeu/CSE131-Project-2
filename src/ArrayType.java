@@ -12,6 +12,13 @@ class ArrayType extends CompositeType{
     public ArrayType(String strName, int size,int dim){
         super(strName, size);
         dimension  = dim;
+        length = size;
+    }
+
+    public ArrayType(String strName, int size,int dim,int len){
+        super(strName, size);
+        dimension  = dim;
+        length = size;
     }
 
     public boolean isArray() { return true; }
@@ -55,12 +62,12 @@ class ArrayType extends CompositeType{
 
     public int getTotalSize() {
         if (dimension ==1) {
-            return (4 * this.getSize());
+            return length*next.getSize();
         }
         else {
-            return this.getSize()*((ArrayType)next).getTotalSize();
+            return length*((ArrayType)next).getTotalSize();
         }
-    }
+     }
 
     public void addNext(Type t) {
         if (next == null) {

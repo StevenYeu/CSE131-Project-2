@@ -487,47 +487,89 @@ class MyParser extends parser
                       this.setNewCall(false);
 
                     }
+
+                    // Array Case
                     if(!arraylist.isEmpty()) {
                        result = new VarSTO(id,arr);
+                       if(m_symtab.getLevel() == 1){
+                          result.setOffset(id);
+                          result.setBase("%g0");
+                          codegen.DoGlobalVarInitVar(result);
+                          if(codegen.getholdOff()){
+                            codegen.TimeToWrite();
+                          }
+                          codegen.setholdOff(false);    
+                        }
+                        else{
+                          offsetCnt = offsetCnt + ((ArrayType)result.getType()).getTotalSize()/4;
+                          result.setOffset(String.valueOf(offsetCnt * -4));
+                          result.setBase("%fp");
+                        }
+                        result.setStructName(fun.getStructName());
+                        result.setAssemblyName(((FuncSTO)fun).getAssemblyName());
+
+                       // loop to create array of struct
+                        for(int i = 0; i < ((ArrayType)arr).getLength(); i++) {
+
+                          STO offset = result;
+                          offsetCnt++;
+                          offset.setOffset(String.valueOf(offsetCnt * -4));
+                          offset.setBase("%fp");
+                          codegen.DoStructArray(result,offset,i);
+                          codegen.DoCtor(offset, fun);
+
+
+                        }
+                        if(m_symtab.getLevel() == 1){
+
+                          //a sto for this init func, does nothing except holds offset and base
+                          STO func = new FuncSTO("tempFunc");
+                          int val = offsetCnt*4;
+                          func.setOffset("+"+String.valueOf(val));
+                          func.setBase("92");
+
+                          codegen.initGlobalVarEnd(result, func);
+                        }
                     }
                     else {
                        result = new VarSTO(id,typ);
+                         //Assembly Write: structcall
+                      if(m_symtab.getLevel() == 1){
+                          result.setOffset(id);
+                          result.setBase("%g0");
+                          codegen.DoGlobalVarInitVar(result);
+                          if(codegen.getholdOff()){
+                              codegen.TimeToWrite();
+                          }
+                          codegen.setholdOff(false);
+                    
+                      }
+                      else{
+                         offsetCnt = offsetCnt + result.getType().getSize()/4;
+                         result.setOffset(String.valueOf(offsetCnt * -4));
+                         result.setBase("%fp");
+                      }
+                      result.setStructName(fun.getStructName());
+                      result.setAssemblyName(((FuncSTO)fun).getAssemblyName());
+
+                  
+                      codegen.DoCtor(result, fun);
+
+                      if(m_symtab.getLevel() == 1){
+
+                          //a sto for this init func, does nothing except holds offset and base
+                          STO func = new FuncSTO("tempFunc");
+                          int val = offsetCnt*4;
+                          func.setOffset("+"+String.valueOf(val));
+                          func.setBase("92");
+
+                          codegen.initGlobalVarEnd(result, func);
+                      }
 
                     }
                     result.setIsModifiable(true);
                     result.setIsAddressable(true);
-                    //Assembly Write: structcall
-                    if(m_symtab.getLevel() == 1){
-                        result.setOffset(id);
-                        result.setBase("%g0");
-                        codegen.DoGlobalVarInitVar(result);
-                        if(codegen.getholdOff()){
-                            codegen.TimeToWrite();
-                        }
-                        codegen.setholdOff(false);
                   
-                    }
-                    else{
-                       offsetCnt = offsetCnt + result.getType().getSize()/4;
-                       result.setOffset(String.valueOf(offsetCnt * -4));
-                       result.setBase("%fp");
-                    }
-                    result.setStructName(fun.getStructName());
-                    result.setAssemblyName(((FuncSTO)fun).getAssemblyName());
-
-                
-                    codegen.DoCtor(result, fun);
-
-                    if(m_symtab.getLevel() == 1){
-
-                        //a sto for this init func, does nothing except holds offset and base
-                        STO func = new FuncSTO("tempFunc");
-                        int val = offsetCnt*4;
-                        func.setOffset("+"+String.valueOf(val));
-                        func.setBase("92");
-
-                        codegen.initGlobalVarEnd(result, func);
-                    }
                     
                     m_symtab.insert(result);
                     return;
@@ -542,16 +584,56 @@ class MyParser extends parser
                    this.setNewCall(false);
 
                  }
+                 // array case
                  if(!arraylist.isEmpty()) {
                     result = new VarSTO(id,arr);
+                    if(m_symtab.getLevel() == 1){
+                       result.setOffset(id);
+                       result.setBase("%g0");
+                       codegen.DoGlobalVarInitVar(result);
+                       if(codegen.getholdOff()){
+                         codegen.TimeToWrite();
+                       }
+                       codegen.setholdOff(false);    
+                     }
+                     else{
+                       offsetCnt = offsetCnt + ((ArrayType)result.getType()).getTotalSize()/4;
+                       result.setOffset(String.valueOf(offsetCnt * -4));
+                       result.setBase("%fp");
+                     }
+                     result.setStructName(fun.getStructName());
+                     result.setAssemblyName(((FuncSTO)fun).getAssemblyName());
+
+                    // loop to create array of struct
+                     for(int i = 0; i < ((ArrayType)arr).getLength(); i++) {
+
+                       STO offset = result;
+                       offsetCnt++;
+                       offset.setOffset(String.valueOf(offsetCnt * -4));
+                       offset.setBase("%fp");
+                       codegen.DoStructArray(result,offset,i);
+                       codegen.DoCtorThis(result);
+                       offsetCnt = codegen.DoFuncCallParam(offset, fun, params, offsetCnt);
+
+
+                     }
+                     if(m_symtab.getLevel() == 1){
+
+                       //a sto for this init func, does nothing except holds offset and base
+                       STO func = new FuncSTO("tempFunc");
+                       int val = offsetCnt*4;
+                       func.setOffset("+"+String.valueOf(val));
+                       func.setBase("92");
+
+                       codegen.initGlobalVarEnd(result, func);
+                     }
+
+
+
                  }
                  else {
                     result = new VarSTO(id,typ);
-
-                 }
-                 result.setIsAddressable(true);
-                 result.setIsModifiable(true);
-                 //Assembly Write: structcall
+                    //Assembly Write: structcall
                   if(m_symtab.getLevel() == 1){
                      result.setOffset(id);
                      result.setBase("%g0");
@@ -581,6 +663,12 @@ class MyParser extends parser
 
                       codegen.initGlobalVarEnd(result, func);
                   }
+
+
+                 }
+                 result.setIsAddressable(true);
+                 result.setIsModifiable(true);
+                 
                   
                   m_symtab.insert(result);
                   return;
@@ -589,56 +677,106 @@ class MyParser extends parser
        }
        else { // overloadcase
            
-           System.out.println("IN");
-
            result = this.DoOverloadCall(sto,params,overloaded);
            if(this.getNewCall() ) {
              result = newCall;
              this.setNewCall(false);
 
            }
+           // array case
            if(!arraylist.isEmpty()) {
               result = new VarSTO(id,arr);
+
+              if(m_symtab.getLevel() == 1){
+                 result.setOffset(id);
+                 result.setBase("%g0");
+                 codegen.DoGlobalVarInitVar(result);
+                 if(codegen.getholdOff()){
+                   codegen.TimeToWrite();
+                 }
+                 codegen.setholdOff(false);    
+               }
+               else{
+                 System.out.println(((ArrayType)result.getType()).getTotalSize());
+                 offsetCnt = offsetCnt + ((ArrayType)result.getType()).getTotalSize()/4;
+                 result.setOffset(String.valueOf(offsetCnt * -4));
+                 result.setBase("%fp");
+               }
+              // loop to create array of struct
+               for(int i = 0; i < ((ArrayType)arr).getLength(); i++) {
+
+                 STO offset = result;
+                 offsetCnt++;
+                 offset.setOffset(String.valueOf(offsetCnt * -4));
+                 offset.setBase("%fp");
+                 codegen.DoStructArray(result,offset,i);
+                 if(params.isEmpty()){
+                     STO antifun = this.getSomeFunc();
+                     codegen.DoCtor(offset, antifun);
+                 }
+                 else{
+                     codegen.DoCtorThis(result);
+                     STO antifun = this.getSomeFunc();
+                     offsetCnt = codegen.DoFuncCallParam(result, antifun, params, offsetCnt);
+                 }
+
+
+               }
+               if(m_symtab.getLevel() == 1){
+
+                 //a sto for this init func, does nothing except holds offset and base
+                 STO func = new FuncSTO("tempFunc");
+                 int val = offsetCnt*4;
+                 func.setOffset("+"+String.valueOf(val));
+                 func.setBase("92");
+
+                 codegen.initGlobalVarEnd(result, func);
+               }
+
+
+
            }
            else {
               result = new VarSTO(id,typ);
 
+              //Assembly Write: structcall
+              if(m_symtab.getLevel() == 1){
+                  result.setOffset(id);
+                  result.setBase("%g0");
+                  codegen.DoGlobalVarInitVar(result);
+                  if(codegen.getholdOff()){
+                      codegen.TimeToWrite();
+                  }
+                      codegen.setholdOff(false);
+                    
+              }
+              else{
+                  offsetCnt = offsetCnt + result.getType().getSize()/4;
+                  result.setOffset(String.valueOf(offsetCnt * -4));
+                  result.setBase("%fp");
+              }
+               
+              if(params.isEmpty()){
+                  codegen.DoCtor(result, result);
+              }
+              else{
+                  codegen.DoCtorThis(result);
+                  STO antifun = this.getSomeFunc();
+                  offsetCnt = codegen.DoFuncCallParam(result, antifun, params, offsetCnt);
+              }
+              if(m_symtab.getLevel() == 1){
+
+                  //a sto for this init func, does nothing except holds offset and base
+                  STO func = new FuncSTO("tempFunc");
+                  int val = offsetCnt*4;
+                  func.setOffset("+"+String.valueOf(val));
+                  func.setBase("92");
+
+                  codegen.initGlobalVarEnd(result, func);
+              }
+
            }
-           //Assembly Write: structcall
-            if(m_symtab.getLevel() == 1){
-                result.setOffset(id);
-                result.setBase("%g0");
-                codegen.DoGlobalVarInitVar(result);
-                if(codegen.getholdOff()){
-                    codegen.TimeToWrite();
-                }
-                    codegen.setholdOff(false);
-                  
-            }
-            else{
-                offsetCnt = offsetCnt + result.getType().getSize()/4;
-                result.setOffset(String.valueOf(offsetCnt * -4));
-                result.setBase("%fp");
-            }
-             
-            if(params.isEmpty()){
-                codegen.DoCtor(result, result);
-            }
-            else{
-                codegen.DoCtorThis(result);
-                STO antifun = this.getSomeFunc();
-                offsetCnt = codegen.DoFuncCallParam(result, antifun, params, offsetCnt);
-            }
-            if(m_symtab.getLevel() == 1){
-
-                //a sto for this init func, does nothing except holds offset and base
-                STO func = new FuncSTO("tempFunc");
-                int val = offsetCnt*4;
-                func.setOffset("+"+String.valueOf(val));
-                func.setBase("92");
-
-                codegen.initGlobalVarEnd(result, func);
-            }
+           
 
            result.setIsAddressable(true);
            result.setIsModifiable(true);
@@ -665,7 +803,8 @@ class MyParser extends parser
         if(arraylist.size() > 0) {
             int numDim = arraylist.size();
             STO sizeStoTop = arraylist.elementAt(0);
-            ArrayType aTopType = new ArrayType(t.getName()+"["+ ((ConstSTO)sizeStoTop).getIntValue() +"]", ((ConstSTO)sizeStoTop).getIntValue(), numDim);
+            int len = ((ConstSTO)sizeStoTop).getIntValue();
+            ArrayType aTopType = new ArrayType(t.getName()+"["+ ((ConstSTO)sizeStoTop).getIntValue() +"]", ((ConstSTO)sizeStoTop).getIntValue(), numDim),length;
 
             
             for(int i = 1; i <=numDim; i++){
@@ -675,7 +814,8 @@ class MyParser extends parser
                 }
                 else{  
                   STO sizeSto = arraylist.elementAt(i);
-                  ArrayType typ = new ArrayType(t.getName()+"["+ ((ConstSTO)sizeSto).getIntValue() +"]", ((ConstSTO)sizeSto).getIntValue(),numDim-i);
+                  int l = ((ConstSTO)sizeSto).getIntValue();
+                  ArrayType typ = new ArrayType(t.getName()+"["+ ((ConstSTO)sizeSto).getIntValue() +"]", ((ConstSTO)sizeSto).getIntValue(),numDim-i,l);
                   aTopType.addNext(typ);
 
                 }                        
@@ -757,7 +897,7 @@ class MyParser extends parser
 
             STO sizeStoTop = arraylist.elementAt(0);
             String arr = this.CreateArray(arraylist);
-            ArrayType aTopType = new ArrayType(t.getName() + arr, ((ConstSTO)sizeStoTop).getIntValue(), numDim);
+            ArrayType aTopType = new ArrayType(t.getName() + arr, ((ConstSTO)sizeStoTop).getIntValue(), numDim,((ConstSTO)sizeStoTop).getIntValue());
 
 
             
@@ -772,7 +912,7 @@ class MyParser extends parser
                      arr = arr.substring(arr.indexOf("]")+1);
                   }
 
-                  ArrayType typ = new ArrayType(t.getName()+arr, ((ConstSTO)sizeSto).getIntValue(),numDim-i);
+                  ArrayType typ = new ArrayType(t.getName()+arr, ((ConstSTO)sizeSto).getIntValue(),numDim-i,((ConstSTO)sizeSto).getIntValue());
                   aTopType.addNext(typ);
                 }
                         
@@ -2305,6 +2445,7 @@ class MyParser extends parser
               // case with no params
               if(parSize == overParSize) {
               	if(overParSize == 0 && parSize == 0) { // case if calling function has no params
+                  this.setSomeFunc(fun);
                   result.setStructName(fun.getStructName());
                   result.setAssemblyName(fun.getAssemblyName());
               	  result =  new ExprSTO(fun.getName(),fun.getType());
@@ -3313,7 +3454,7 @@ class MyParser extends parser
         else{
 
             String name = type.concat("" + numArr);
-            ArrayType aTopType = new ArrayType(name,sizes.get(0), dim);
+            ArrayType aTopType = new ArrayType(name,sizes.get(0), dim,sizes.get(0));
 
             
             for(int i = 1; i <=dim; i++){
@@ -3324,7 +3465,7 @@ class MyParser extends parser
                 else{  
                   int size = sizes.get(i);
                   String n = name.substring(0,name.lastIndexOf("["));
-                  ArrayType typ = new ArrayType(n, size,dim-i);
+                  ArrayType typ = new ArrayType(n, size,dim-i,size);
                   aTopType.addNext(typ);
                 }
                 
@@ -3733,9 +3874,10 @@ class MyParser extends parser
            return new ErrorType();
          }
        }
+       int len = ((ConstSTO)arraylist.get(0)).getIntValue();
        String s = base.getName().concat("[" + ((ConstSTO)arraylist.get(0)).getIntValue()+ "]");
        size = ((ConstSTO)arraylist.get(0)).getIntValue();
-       ArrayType TopArray = new ArrayType(s, size, dim);
+       ArrayType TopArray = new ArrayType(s, size, dim,len);
        for (int i = 1; i <= dim; i++) {
           if(i == dim){
             TopArray.addNext(base);
@@ -3745,7 +3887,7 @@ class MyParser extends parser
             int number = ((ConstSTO)num).getIntValue();
             size += number;
             s = s.concat("[" + number + "]");
-            ArrayType typ = new ArrayType(s, size, dim-i);
+            ArrayType typ = new ArrayType(s, size, dim-i,number);
             TopArray.addNext(typ);
           }
        }
@@ -3901,7 +4043,7 @@ class MyParser extends parser
         if(!(arraylist.isEmpty())) {
             int numDim = arraylist.size();
             STO sizeStoTop = arraylist.elementAt(0);
-            ArrayType aTopType = new ArrayType(t.getName(), ((ConstSTO)sizeStoTop).getIntValue(), numDim);
+            ArrayType aTopType = new ArrayType(t.getName(), ((ConstSTO)sizeStoTop).getIntValue(), numDim,((ConstSTO)sizeStoTop).getIntValue());
 
             
             for(int i = 1; i <=numDim; i++){
@@ -3911,7 +4053,8 @@ class MyParser extends parser
                 }
                 else{  
                   STO sizeSto = arraylist.elementAt(i);
-                  ArrayType typ = new ArrayType(t.getName()+"["+ ((ConstSTO)sizeSto).getIntValue() +"]", ((ConstSTO)sizeSto).getIntValue(),numDim-i);
+                  int len = ((ConstSTO)sizeSto).getIntValue();
+                  ArrayType typ = new ArrayType(t.getName()+"["+ ((ConstSTO)sizeSto).getIntValue() +"]", ((ConstSTO)sizeSto).getIntValue(),numDim-i,len);
                   aTopType.addNext(typ);
 
                 }                        
