@@ -529,6 +529,8 @@ class MyParser extends parser
                           func.setBase("92");
 
                           codegen.initGlobalVarEnd(result, func);
+                          offsetCnt = 0;     //reset counter after each init -- 11/19 
+
                         }
                     }
                     else {
@@ -564,6 +566,8 @@ class MyParser extends parser
                           func.setBase("92");
 
                           codegen.initGlobalVarEnd(result, func);
+                          offsetCnt = 0;     //reset counter after each init -- 11/19 
+
                       }
 
                     }
@@ -626,6 +630,8 @@ class MyParser extends parser
                        func.setBase("92");
 
                        codegen.initGlobalVarEnd(result, func);
+                       offsetCnt = 0;     //reset counter after each init -- 11/19 
+
                      }
 
 
@@ -662,6 +668,8 @@ class MyParser extends parser
                       func.setBase("92");
 
                       codegen.initGlobalVarEnd(result, func);
+                      offsetCnt = 0;     //reset counter after each init -- 11/19 
+
                   }
 
 
@@ -731,6 +739,8 @@ class MyParser extends parser
                  func.setBase("92");
 
                  codegen.initGlobalVarEnd(result, func);
+                 offsetCnt = 0;     //reset counter after each init -- 11/19 
+
                }
 
 
@@ -773,6 +783,8 @@ class MyParser extends parser
                   func.setBase("92");
 
                   codegen.initGlobalVarEnd(result, func);
+                  offsetCnt = 0;     //reset counter after each init -- 11/19 
+
               }
 
            }
@@ -1022,7 +1034,8 @@ class MyParser extends parser
                     func.setBase("92");
 
                     // init func ender
-                    codegen.initGlobalVarEnd(sto, func); 
+                    codegen.initGlobalVarEnd(sto, func);
+                    offsetCnt = 0;     //reset counter after each init -- 11/19 
                 }
                 // local init case
                 else{
@@ -1166,6 +1179,8 @@ class MyParser extends parser
 
                         // init func ender
                         codegen.initGlobalVarEnd(sto, func);
+                        offsetCnt = 0;     //reset counter after each init -- 11/19 
+
 
                     }
                 }
@@ -1850,9 +1865,13 @@ class MyParser extends parser
 
         if(isInStruct){
             codegen.DoFuncEnd(fun, StructName);
+            offsetCnt = 0;     //reset counter after each init -- 11/19 
+
         }
         else{
             codegen.DoFuncEnd(fun, null);
+            offsetCnt = 0;     //reset counter after each init -- 11/19 
+
         }
         m_symtab.closeScope();
 
@@ -2859,7 +2878,7 @@ class MyParser extends parser
             }
         }
         if(sto.getType() instanceof ArrayType) {
-            VarSTO v = new VarSTO(sto.getName(), ((ArrayType)sto.getType()).getNext());
+            VarSTO v = new VarSTO(sto.getName()+"["+expr.getName()+"]", ((ArrayType)sto.getType()).getNext());
             v.setIsModifiable(true);
             v.setIsAddressable(true);
 
@@ -3129,6 +3148,9 @@ class MyParser extends parser
  
                     codegen.DoBinaryInt(a, b, o.getOp(), result);
                 }
+                else if(a.getType() instanceof PointerType){
+                    codegen.DoBinaryInt(a, b, o.getOp(), result);
+                }
 
             }
 
@@ -3248,9 +3270,14 @@ class MyParser extends parser
             STO b = new ConstSTO("1", new IntType("int"), 1);
             codegen.DoPrePostInt(a, b, s1, result, "%o2");
         }
-        else{
+        else if(result.getType() instanceof FloatType){
             STO b = new ConstSTO("1", new IntType("int"), 1);
             codegen.DoPrePostFloat(a, b, s1, result, "%f2");
+        }
+        else{
+            STO b = new ConstSTO("4", new IntType("int"), 4);
+            codegen.DoPrePostInt(a, b, s1, result, "%o2");
+
         }
 
         result.setIsAddressable(false);
@@ -3873,7 +3900,16 @@ class MyParser extends parser
            Vector<STO> locals = s.getLocals();
            for (int i = 0;i < locals.size() ; i++) {
            	   if(locals.get(i).getName().equals(strID)) {
-           	      return locals.get(i);
+                  STO temp = locals.get(i);
+                  temp.setOffset(String.valueOf(++offsetCnt * -4));
+                  temp.setBase("%fp");
+                  temp.getType().setIsPointer(true);
+                  codegen.DoDereference(sto, temp);
+                  STO result = new VarSTO(temp.getName(), temp.getType());
+                  result.setOffset(String.valueOf(++offsetCnt * -4));
+                  result.setBase("%fp");
+                  codegen.DoStructCall(temp, result);
+           	      return result;
            	   }
            	
            }

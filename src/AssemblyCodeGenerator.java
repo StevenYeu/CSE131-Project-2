@@ -835,25 +835,35 @@ public class AssemblyCodeGenerator {
 
         }
 
-        // set totalsize, %o1
-        //int total = ((ArrayType)sto.getType()).getLength();
-        int total = ((ArrayType)sto.getType()).getSize();
-        this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(total), "%o1");
-        this.decreaseIndent();
 
-        // call  .$$.arrCheck
-        this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, CALL_OP, DOLLAR+"arrCheck");
-        this.decreaseIndent();
 
-        // nop
-        this.increaseIndent();
-        this.writeAssembly(NO_PARAM, NOP_OP);
-        this.decreaseIndent();
+        // call  .$$.arrCheck 
+        if(!(sto.getType() instanceof PointerType)){
+            // set totalsize, %o1
+            //int total = ((ArrayType)sto.getType()).getLength();
+            int total = ((ArrayType)sto.getType()).getSize();
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(total), "%o1");
+            this.decreaseIndent();
 
-        // set  base type size, %o0 
-        int baseSize = ((ArrayType)sto.getType()).getBaseType().getSize();
+            this.increaseIndent();
+            this.writeAssembly(ONE_PARAM, CALL_OP, DOLLAR+"arrCheck");
+            this.decreaseIndent();
+
+            // nop
+            this.increaseIndent();
+            this.writeAssembly(NO_PARAM, NOP_OP);
+            this.decreaseIndent();
+        }
+        // set  base type size, %o0
+
+        int baseSize;
+        if(sto.getType() instanceof PointerType){
+            baseSize = ((PointerType)sto.getType()).getBaseType().getSize();
+        }
+        else{
+            baseSize = ((ArrayType)sto.getType()).getBaseType().getSize();
+        }
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(baseSize),"%o1");
         this.decreaseIndent();
@@ -868,25 +878,38 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(NO_PARAM, NOP_OP);
         this.decreaseIndent();
 
+
         //mov %o0, %o1
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, MOV_OP, "%o0", "%o1");
         this.decreaseIndent();
 
+        String reg = "%o0";
+        if(sto.getType() instanceof PointerType){
+            reg = "%l7";
+        }
+
+
         //set offset, %o0
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), "%o0");
+        this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), reg);
         this.decreaseIndent();
 
         //add base, "%o0", "%o0"
         this.increaseIndent();
-        this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%o0", "%o0");
+        this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), reg, reg);
         this.decreaseIndent();
     
         if(sto.getStructTag()){
             // ld [%o0], %o0
             this.increaseIndent();
             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
+            this.decreaseIndent();
+        }
+        if(sto.getType() instanceof PointerType){
+            // ld "[%l7]", %o0
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o0");
             this.decreaseIndent();
         }
         //call .$$.ptrCheck
@@ -2322,6 +2345,13 @@ public class AssemblyCodeGenerator {
            this.DoOperandLit(a, "%o0"); 
             
         }
+        // null pointer check
+        else if(a.getType() instanceof NullPointerType){
+           // set 0, %o0
+           this.increaseIndent();
+           this.writeAssembly(TWO_PARAM, SET_OP, "0", "%o0");
+           this.decreaseIndent();
+        }
         else{
             this.DoOperand(a, "%o0");
         }
@@ -2332,6 +2362,14 @@ public class AssemblyCodeGenerator {
            this.DoOperandLit(b, "%o1"); 
             
         }
+        // null pointer check
+        else if(b.getType() instanceof NullPointerType){
+           // set 0, %o1
+           this.increaseIndent();
+           this.writeAssembly(TWO_PARAM, SET_OP, "0", "%o1");
+           this.decreaseIndent();
+        }
+
         else{
             this.DoOperand(b, "%o1");
         }
@@ -2796,7 +2834,8 @@ public class AssemblyCodeGenerator {
 
 
         this.DoOperand(a, "%o0");
-        
+       
+
         this.DoOperandLit(b, "%o1"); 
             
 
@@ -4208,7 +4247,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%l7", "%l7");
         this.decreaseIndent();
 
-        if(sto.getArrayTag()){
+        if(sto.getArrayTag() || sto.flag){
             // ld [%l7], %l7
             this.increaseIndent();
             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
@@ -4255,6 +4294,9 @@ public class AssemblyCodeGenerator {
     // This handles addressOf
     // -------------------------------------------------------------
     public void DoAddress(STO sto, STO result){
+        
+        this.writeAssembly(NEWLINE);
+
         // ! comment
         this.increaseIndent();
         this.writeAssembly(NO_PARAM, "! "+result.getName());
@@ -4269,6 +4311,13 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%o0", "%o0");
         this.decreaseIndent();
+
+        if(sto.getArrayTag()){
+            // ld [%o0] %o0
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
+            this.decreaseIndent();
+        }
 
         //set result.offset, %o1
         this.increaseIndent();
