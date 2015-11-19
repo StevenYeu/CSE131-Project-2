@@ -1179,7 +1179,7 @@ public class AssemblyCodeGenerator {
 
 
 
-        if(expr.getArrayTag()){
+        if(expr.getArrayTag() || expr.getType().getIsPointer()){
              this.increaseIndent();
              this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
              this.decreaseIndent();
@@ -2099,7 +2099,7 @@ public class AssemblyCodeGenerator {
         if(t instanceof BoolType){
 
             // if param is a reference
-            if(sto.flag == true || sto.getArrayTag() || sto.getStructTag()) {
+            if(sto.flag == true || sto.getArrayTag() || sto.getStructTag() || sto.getType().getIsPointer()) {
                this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", reg);
                //this.decreaseIndent();
 
@@ -2115,7 +2115,7 @@ public class AssemblyCodeGenerator {
         }
         else if( t instanceof IntType){
 
-            if(sto.flag == true || sto.getArrayTag() || sto.getStructTag()) {
+            if(sto.flag == true || sto.getArrayTag() || sto.getStructTag() || sto.getType().getIsPointer()) {
                this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", reg);
                //this.decreaseIndent();
 
@@ -2137,7 +2137,7 @@ public class AssemblyCodeGenerator {
         }
         else if( t instanceof FloatType){
  
-            if(sto.flag == true || sto.getArrayTag() || sto.getStructTag()) {
+            if(sto.flag == true || sto.getArrayTag() || sto.getStructTag() || sto.getType().getIsPointer()) {
                this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", reg);
                //this.decreaseIndent();
 
@@ -4184,13 +4184,101 @@ public class AssemblyCodeGenerator {
         }
         this.decreaseIndent();
 
-
-
-
-
     }
 
+    // --------------------------------------------------------------------------------
+    // this handles pointer dereference
+    // --------------------------------------------------------------------------------
+    public void DoDereference(STO sto, STO result){
+        
+        this.writeAssembly(NEWLINE);
 
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! "+result.getName());
+        this.decreaseIndent();
+
+        //set sto.offset, %l7
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), "%l7");
+        this.decreaseIndent();
+
+        //add sto.base, %l7, %l7
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%l7", "%l7");
+        this.decreaseIndent();
+
+        //ld  [%l7], [%o0]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o0");
+        this.decreaseIndent();
+
+ 
+        // call  .$$.ptrCheck
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, DOLLAR+"ptrCheck");
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+
+        //set result.offset, %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, result.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        //add result.base, "%o1", "%o1"
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, result.getBase(), "%o1", "%o1");
+        this.decreaseIndent();
+
+        //st %o0, [%o1]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
+        this.decreaseIndent();
+
+    
+    }
+
+    // -------------------------------------------------------------
+    // This handles addressOf
+    // -------------------------------------------------------------
+    public void DoAddress(STO sto, STO result){
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! "+result.getName());
+        this.decreaseIndent();
+
+        //set sto.offset, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), "%o0");
+        this.decreaseIndent();
+
+        //add sto.base, %o0, %o0
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%o0", "%o0");
+        this.decreaseIndent();
+
+        //set result.offset, %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, result.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        //add result.base, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, result.getBase(),"%o1", "%o1");
+        this.decreaseIndent();
+
+
+        //st  %o0, [%o1]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
+        this.decreaseIndent();
+
+    }
 
 }
 

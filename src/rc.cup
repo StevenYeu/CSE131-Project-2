@@ -841,7 +841,8 @@ Expr ::=            Designator:_1 T_ASSIGN Expr:_2
                     :}
     |               Expr0:_1
                     {:
-                        ((MyParser)parser).DoBoolWrite();
+                       // I changed this -- 11/18
+                       // ((MyParser)parser).DoBoolWrite();
                         RESULT = _1;
                     :}
     ;

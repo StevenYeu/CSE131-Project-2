@@ -960,8 +960,32 @@ class MyParser extends parser
         else {
             // var decl for pointer 
             if(t instanceof PointerType){
+                // uninit case
                 if(expr == null) {
               	    sto = new VarSTO(id,t);
+                    // global uninit case
+                    if(m_symtab.getLevel() == 1){
+                        sto.setBase("%g0");
+                        sto.setOffset(id);
+
+                        codegen.DoGlobalVarDecl(sto);
+
+                    }
+                    // local case
+                    else{
+                        //local static case
+                        if(optstatic != null){
+                            //to be implemented
+                        }
+                        //local non static case 
+                        else{
+                            sto.setBase("%fp");
+                            sto.setOffset(String.valueOf(++offsetCnt * -4));
+
+                            
+
+                        }
+                    }
 		            m_symtab.insert(sto);
                     return;
                 }
@@ -976,12 +1000,47 @@ class MyParser extends parser
                     m_errors.print(Formatter.toString(ErrorMsg.error8_Assign, expr.getType().getName(),t.getName()));
                     return;
                 }
-
-            
- 
                 
-    
                 sto = new VarSTO(id,t);
+                //Global init case
+                if(m_symtab.getLevel() == 1){
+                    sto.setBase("%g0");
+                    sto.setOffset(id);
+                    System.out.println(codegen.getholdOff());
+                    codegen.setholdOff(false);
+                    
+                    codegen.DoGlobalVarInitVar(sto);
+                    
+                    codegen.TimeToWrite();
+
+                    codegen.DoVarAssign(sto,expr, null);
+                        
+                    //a sto for this init func, does nothing except holds offset and base
+                    STO func = new FuncSTO("tempFunc");
+                    int val = offsetCnt*4;
+                    func.setOffset("+"+String.valueOf(val));
+                    func.setBase("92");
+
+                    // init func ender
+                    codegen.initGlobalVarEnd(sto, func); 
+                }
+                // local init case
+                else{
+                    // local static case
+                    if(optstatic != null){
+                        //to be implemented
+                    }
+                    // local nonstatic case
+                    else{
+                        sto.setBase("%fp");
+                        sto.setOffset(String.valueOf(++offsetCnt * -4));   
+
+                        codegen.DoVarAssign(sto, expr, null);
+
+
+                    }
+                }
+
                 //lval for pointer
                 sto.setIsAddressable(true);
                 sto.setIsModifiable(true);
@@ -3848,7 +3907,7 @@ class MyParser extends parser
         if(sto instanceof ErrorSTO){
             return sto;
         }
-        VarSTO result = new VarSTO(sto.getName(),((PointerType)sto.getType()).getNext());
+        VarSTO result = new VarSTO("*" + sto.getName(),((PointerType)sto.getType()).getNext());
         if(!(((PointerType)sto.getType()).getNext() instanceof ArrayType)){
             result.setIsModifiable(true);
             result.setIsAddressable(true);
@@ -3858,6 +3917,10 @@ class MyParser extends parser
             result.setIsAddressable(true);
 
         }
+        result.getType().setIsPointer(true);
+        result.setOffset(String.valueOf(++offsetCnt * -4));
+        result.setBase("%fp");
+        codegen.DoDereference(sto, result);
         return result;
     }
 
@@ -3987,9 +4050,30 @@ class MyParser extends parser
         ptr.addNext(sto.getType());
 
 
-        ExprSTO expr = new ExprSTO(sto.getName(),ptr);
+        ExprSTO expr = new ExprSTO("&"+sto.getName(),ptr);
         expr.setIsAddressable(false);
         expr.setIsAddressable(false);
+
+        if(this.GetSavedLineCnt() == 0){
+            this.SaveLineCnt();
+        }
+        System.out.println("A:" +this.GetSavedLineCnt());
+        System.out.println("B:" +this.GetLineNum());
+        if(this.GetSavedLineCnt() != this.GetLineNum()){
+            if(codegen.getholdOff()){
+                codegen.TimeToWrite();
+            }
+            this.SaveLineCnt();
+            codegen.setholdOff(false);
+        }
+        else{
+            codegen.setholdOff(true);
+        }
+      
+        System.out.println("ELSE " + codegen.getholdOff());
+        expr.setOffset(String.valueOf(++offsetCnt * -4));
+        expr.setBase("%fp");
+        codegen.DoAddress(sto, expr);
         return expr;
          
     }

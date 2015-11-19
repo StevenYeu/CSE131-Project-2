@@ -21,6 +21,7 @@ abstract class Type
 	// Name of the Type (e.g., int, bool, some structdef, etc.)
 	private String m_typeName;
 	private int m_size;
+    private boolean isPointer;
 
 	//----------------------------------------------------------------
 	//
@@ -66,6 +67,13 @@ abstract class Type
 	{
 		m_size = size;
 	}
+
+    public boolean getIsPointer(){
+       return isPointer;
+    }
+    public void setIsPointer(boolean b){
+       isPointer = b;
+    }
 
 	//----------------------------------------------------------------
 	//	It will be helpful to ask a Type what specific Type it is.
