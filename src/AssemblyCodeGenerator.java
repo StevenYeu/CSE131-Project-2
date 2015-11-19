@@ -1636,7 +1636,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%o0", "%o0");
         this.decreaseIndent();
 
-        if(sto.getArrayTag()) {
+        if(sto.getArrayTag() || sto.getType().getIsPointer()) {
             this.increaseIndent();
             this.writeAssembly(TWO_PARAM, LOAD_OP,"[%o0]", "%o0");
             this.decreaseIndent();
@@ -4207,6 +4207,14 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%l7", "%l7");
         this.decreaseIndent();
+
+        if(sto.getArrayTag()){
+            // ld [%l7], %l7
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
+            this.decreaseIndent();
+
+        }
 
         //ld  [%l7], [%o0]
         this.increaseIndent();

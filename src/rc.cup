@@ -568,11 +568,13 @@ StmtList ::=        Stmt:_1
                     {:
                         RESULT = new Vector();
                         RESULT.addElement(_1);
+                        ((MyParser) parser).DoBoolWrite();
                     :}
     |               StmtList:_1 Stmt:_2
                     {:
                         RESULT = _1;
                         RESULT.addElement(_2);
+                        ((MyParser) parser).DoBoolWrite();
                     :}
     ;
 
@@ -834,7 +836,7 @@ ExprList ::=        Expr:_1
 Expr ::=            Designator:_1 T_ASSIGN Expr:_2
                     {:
                         // we add this, not given
-                     //  ((MyParser) parser).DoBoolWrite(); 
+                      // ((MyParser) parser).DoBoolWrite(); 
                         RESULT = ((MyParser) parser).DoAssignTypeCheck(_1,_2);
                         
                        

@@ -2875,6 +2875,12 @@ class MyParser extends parser
             VarSTO v = new VarSTO(sto.getName(), ((PointerType)sto.getType()).getNext());
             v.setIsModifiable(true);
             v.setIsAddressable(true);
+
+            //Write Assembly: array of pointer usage
+            v.setOffset(String.valueOf(++offsetCnt * -4));
+            v.setBase("%fp");
+            v.setArrayTag(true);
+
             codegen.DoArrayCheck(sto, expr, v);
             return v;
 
