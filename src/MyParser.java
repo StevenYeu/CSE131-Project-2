@@ -697,7 +697,7 @@ class MyParser extends parser
                  codegen.setholdOff(false);    
                }
                else{
-                 System.out.println(((ArrayType)result.getType()).getTotalSize());
+                
                  offsetCnt = offsetCnt + ((ArrayType)result.getType()).getTotalSize()/4;
                  result.setOffset(String.valueOf(offsetCnt * -4));
                  result.setBase("%fp");
@@ -1006,7 +1006,7 @@ class MyParser extends parser
                 if(m_symtab.getLevel() == 1){
                     sto.setBase("%g0");
                     sto.setOffset(id);
-                    System.out.println(codegen.getholdOff());
+                 
                     codegen.setholdOff(false);
                     
                     codegen.DoGlobalVarInitVar(sto);
@@ -2060,6 +2060,21 @@ class MyParser extends parser
 
         // Assembly Writing: code for var assignment
         // note this only takes place in local not global scope
+        if(this.GetSavedLineCnt() == 0){
+            this.SaveLineCnt(); 
+        }
+        if(this.GetSavedLineCnt() != this.GetLineNum()){
+        
+            if(codegen.getholdOff()){
+                codegen.TimeToWrite();
+            }
+            this.SaveLineCnt();
+            codegen.setholdOff(false);
+        }
+        else{
+            codegen.setholdOff(true);
+        }
+
         if(b instanceof ConstSTO){
     
             //float case
@@ -2126,21 +2141,6 @@ class MyParser extends parser
             }
         }
         else{
-    
-            if(this.GetSavedLineCnt() == 0){
-                this.SaveLineCnt(); 
-            }
-            if(this.GetSavedLineCnt() != this.GetLineNum()){
-        
-                if(codegen.getholdOff()){
-                    codegen.TimeToWrite();
-                }
-                this.SaveLineCnt();
-                codegen.setholdOff(false);
-            }
-            else{
-                codegen.setholdOff(true);
-            }
             
             //Type promotion case
             if(a.getType() instanceof FloatType && b.getType() instanceof IntType){
@@ -4054,23 +4054,21 @@ class MyParser extends parser
         expr.setIsAddressable(false);
         expr.setIsAddressable(false);
 
-        if(this.GetSavedLineCnt() == 0){
-            this.SaveLineCnt();
-        }
-        System.out.println("A:" +this.GetSavedLineCnt());
-        System.out.println("B:" +this.GetLineNum());
-        if(this.GetSavedLineCnt() != this.GetLineNum()){
-            if(codegen.getholdOff()){
-                codegen.TimeToWrite();
-            }
-            this.SaveLineCnt();
-            codegen.setholdOff(false);
-        }
-        else{
+       // if(this.GetSavedLineCnt() == 0){
+       //     this.SaveLineCnt();
+       // }
+      //  if(this.GetSavedLineCnt() != this.GetLineNum()){
+      //      if(codegen.getholdOff()){
+      //          codegen.TimeToWrite();
+      //      }
+      //      this.SaveLineCnt();
+      //      codegen.setholdOff(false);
+     //   }
+     //   else{
             codegen.setholdOff(true);
-        }
+     //   }
       
-        System.out.println("ELSE " + codegen.getholdOff());
+
         expr.setOffset(String.valueOf(++offsetCnt * -4));
         expr.setBase("%fp");
         codegen.DoAddress(sto, expr);

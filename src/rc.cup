@@ -834,7 +834,7 @@ ExprList ::=        Expr:_1
 Expr ::=            Designator:_1 T_ASSIGN Expr:_2
                     {:
                         // we add this, not given
-                       ((MyParser) parser).DoBoolWrite(); 
+                     //  ((MyParser) parser).DoBoolWrite(); 
                         RESULT = ((MyParser) parser).DoAssignTypeCheck(_1,_2);
                         
                        
