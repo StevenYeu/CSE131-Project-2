@@ -834,16 +834,16 @@ class MyParser extends parser
             }
             
 		    sto = new VarSTO(id,aTopType);
-            sto.setStructOffset(structOffset);
+            sto.setStructOffset(structOffset * 4);
             structOffset += ((ConstSTO)sizeStoTop).getIntValue();
-            sto.setArrayTag(true); 
+            //sto.setArrayTag(true); 
             sto.setIsAddressable(true);
             sto.setIsModifiable(false);
         }
         else {
-		    sto = new VarSTO(id,t);
+ 		    sto = new VarSTO(id,t);
             // set offset in struct 
-            sto.setStructOffset(structOffset++);
+            sto.setStructOffset(4 * structOffset++);
             sto.setIsAddressable(true);
             sto.setIsModifiable(true);
 
@@ -2743,7 +2743,6 @@ class MyParser extends parser
  
         }
         else{
-            
             Scope curr = ((StructType)sto.getType()).getScope();
             Vector<STO> locals = curr.getLocals();
             for(int i = 0 ; i < locals.size(); i++){
@@ -2755,7 +2754,7 @@ class MyParser extends parser
        
                     STO result = locals.get(i);
 
-                    if(!(result instanceof FuncSTO)){ 
+                    if(!(result instanceof FuncSTO)){
                         result.setArrayTag(locals.get(i).getArrayTag());
 
                         offsetCnt++;
@@ -2898,7 +2897,7 @@ class MyParser extends parser
             //Write Assembly: array of pointer usage
             v.setOffset(String.valueOf(++offsetCnt * -4));
             v.setBase("%fp");
-            v.setArrayTag(true);
+            v.setIsPointer(true);
 
             codegen.DoArrayCheck(sto, expr, v);
             return v;
@@ -3328,9 +3327,15 @@ class MyParser extends parser
             STO b = new ConstSTO("1", new IntType("int"), 1);
             codegen.DoPrePostInt(a, b, s1, result, "%o0");
         }
-        else{
+        else if(result.getType() instanceof FloatType){
+
             STO b = new ConstSTO("1", new IntType("int"), 1);
             codegen.DoPrePostFloat(a, b, s1, result, "%f0");
+        }
+        else{
+            STO b = new ConstSTO("4", new IntType("int"), 4);
+            codegen.DoPrePostInt(a, b, s1, result, "%o0");
+
         }
 
 
@@ -3900,14 +3905,24 @@ class MyParser extends parser
            Vector<STO> locals = s.getLocals();
            for (int i = 0;i < locals.size() ; i++) {
            	   if(locals.get(i).getName().equals(strID)) {
-                  STO temp = locals.get(i);
-                  temp.setOffset(String.valueOf(++offsetCnt * -4));
+                  //STO temp = locals.get(i);
+                  STO temp = new VarSTO(locals.get(i).getName(), locals.get(i).getType()); 
+                  //temp.setStructTag(locals.get(i).getStructTag());
+                  temp.setStructOffset(locals.get(i).getStructOffset()); 
+                  offsetCnt++;
+                  temp.setOffset(String.valueOf(offsetCnt * -4));
                   temp.setBase("%fp");
-                  temp.getType().setIsPointer(true);
+                  temp.setIsPointer(true);
+                 // if(((PointerType)sto.getType()).getBaseType() instanceof StructType){
+                   //   sto.setStructTag(true);
+                 // }
                   codegen.DoDereference(sto, temp);
                   STO result = new VarSTO(temp.getName(), temp.getType());
-                  result.setOffset(String.valueOf(++offsetCnt * -4));
+                  result.setStructOffset(temp.getStructOffset());
+                  offsetCnt++;
+                  result.setOffset(String.valueOf(offsetCnt * -4));
                   result.setBase("%fp");
+                  result.setIsPointer(true);
                   codegen.DoStructCall(temp, result);
            	      return result;
            	   }
@@ -3959,7 +3974,8 @@ class MyParser extends parser
             result.setIsAddressable(true);
 
         }
-        result.getType().setIsPointer(true);
+
+        result.setIsPointer(true);
         result.setOffset(String.valueOf(++offsetCnt * -4));
         result.setBase("%fp");
         codegen.DoDereference(sto, result);

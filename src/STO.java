@@ -23,6 +23,7 @@ abstract class STO
     private int value;
     private String structName;
     private String AssemblyName;
+    private boolean isPointer = false;
 	//----------------------------------------------------------------
 	//
 	//----------------------------------------------------------------
@@ -184,7 +185,7 @@ abstract class STO
     }
 
     public void setStructOffset(int i){
-        structOffset = i * 4;
+        structOffset = i;
     }
 
     public int getStructOffset(){
@@ -205,6 +206,14 @@ abstract class STO
 
     public String getAssemblyName(){
        return AssemblyName;
+    }
+
+    public boolean getIsPointer() {
+       return isPointer;
+    }
+
+    public void setIsPointer(boolean b) {
+       isPointer = b;
     }
 	//----------------------------------------------------------------
 	//	It will be helpful to ask a STO what specific STO it is.

@@ -900,7 +900,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), reg, reg);
         this.decreaseIndent();
     
-        if(sto.getStructTag()){
+        if(sto.getStructTag() || sto.getIsPointer()){
             // ld [%o0], %o0
             this.increaseIndent();
             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
@@ -1183,7 +1183,7 @@ public class AssemblyCodeGenerator {
 
         
         // do load for reference added 11/14
-        if(sto.flag || sto.getArrayTag() || sto.getStructTag()) {
+        if(sto.flag || sto.getArrayTag() || sto.getStructTag() || sto.getIsPointer()) {
                 // ld    [%o1], o1
            this.increaseIndent();
            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1");
@@ -1202,7 +1202,7 @@ public class AssemblyCodeGenerator {
 
 
 
-        if(expr.getArrayTag() || expr.getType().getIsPointer()){
+        if(expr.getArrayTag() || expr.getIsPointer()){
              this.increaseIndent();
              this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
              this.decreaseIndent();
@@ -1329,7 +1329,7 @@ public class AssemblyCodeGenerator {
 
         // add load op for ref
         // ld [%o1] %o1
-        if(a.flag || a.getArrayTag() || a.getStructTag()) {
+        if(a.flag || a.getArrayTag() || a.getStructTag() || a.getIsPointer()) {
            this.increaseIndent();
            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1" );
            this.decreaseIndent();
@@ -1384,7 +1384,7 @@ public class AssemblyCodeGenerator {
 
         // add load op for ref 
         // ld [%o1] %o1
-        if(a.flag || a.getArrayTag() || a.getStructTag()) {
+        if(a.flag || a.getArrayTag() || a.getStructTag() || a.getIsPointer()) {
            this.increaseIndent();
            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1");
            this.decreaseIndent();
@@ -1659,7 +1659,9 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%o0", "%o0");
         this.decreaseIndent();
 
-        if(sto.getArrayTag() || sto.getType().getIsPointer()) {
+        if(sto.getArrayTag() || sto.getIsPointer()) {
+
+            
             this.increaseIndent();
             this.writeAssembly(TWO_PARAM, LOAD_OP,"[%o0]", "%o0");
             this.decreaseIndent();
@@ -2122,7 +2124,7 @@ public class AssemblyCodeGenerator {
         if(t instanceof BoolType){
 
             // if param is a reference
-            if(sto.flag == true || sto.getArrayTag() || sto.getStructTag() || sto.getType().getIsPointer()) {
+            if(sto.flag == true || sto.getArrayTag() || sto.getStructTag() || sto.getIsPointer()) {
                this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", reg);
                //this.decreaseIndent();
 
@@ -2138,7 +2140,7 @@ public class AssemblyCodeGenerator {
         }
         else if( t instanceof IntType){
 
-            if(sto.flag == true || sto.getArrayTag() || sto.getStructTag() || sto.getType().getIsPointer()) {
+            if(sto.flag == true || sto.getArrayTag() || sto.getStructTag() || sto.getIsPointer()) {
                this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", reg);
                //this.decreaseIndent();
 
@@ -2160,7 +2162,7 @@ public class AssemblyCodeGenerator {
         }
         else if( t instanceof FloatType){
  
-            if(sto.flag == true || sto.getArrayTag() || sto.getStructTag() || sto.getType().getIsPointer()) {
+            if(sto.flag == true || sto.getArrayTag() || sto.getStructTag() || sto.getIsPointer()) {
                this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", reg);
                //this.decreaseIndent();
 
@@ -3848,7 +3850,6 @@ public class AssemblyCodeGenerator {
                        this.decreaseIndent();
 
                        // ld [%l7] %l7 ---- there is one case that's been needed 11/17
-                       //System.out.println(value.getArrayTag());
                        if(value.getArrayTag()){
                            this.increaseIndent();
                            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
@@ -4247,7 +4248,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%l7", "%l7");
         this.decreaseIndent();
 
-        if(sto.getArrayTag() || sto.flag){
+        if(sto.getArrayTag() || sto.flag || sto.getStructTag() || sto.getIsPointer()){
             // ld [%l7], %l7
             this.increaseIndent();
             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
