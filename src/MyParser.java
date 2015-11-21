@@ -37,9 +37,12 @@ class MyParser extends parser
     private int structOffset = 0;
     // keep track of the line num
     private int m_nSavedLineCnt;
-
+    // for antifun - overload case, need func name and params info
     private STO someFunc;
-
+    // for new case in doctor 
+    private STO newSto;
+    // for new case in doctor
+    private boolean inNewIsPointer = false;
 
 	private SymbolTable m_symtab;
 	//----------------------------------------------------------------
@@ -66,6 +69,31 @@ class MyParser extends parser
     public STO getSomeFunc(){
         return someFunc;
 
+    }
+
+    // ---------------------
+    // 
+    // ---------------------
+    public void setNewSto(STO s){
+        newSto = s;
+    }
+    // ---------------------
+    //
+    // ---------------------
+    public STO getNewSto(){
+        return newSto;
+    }
+    // ---------------------
+    //
+    // ---------------------
+    public void setInNew(boolean b){
+        inNewIsPointer = b;
+    }
+    // ---------------------
+    //
+    // ---------------------
+    public boolean getInNew(){
+        return inNewIsPointer;
     }
 
 	//----------------------------------------------------------------
@@ -417,7 +445,14 @@ class MyParser extends parser
     // ----------------------------------------------------------------
 	void DoCtorStructs(String id, Type t,Vector<STO> arraylist ,Vector<STO> params)
 	{
-    
+        // changed 11/20
+    /*Type t;
+    if(wantedtype instanceof PointerType){
+        t = ((PointerType)wantedtype).getNext();
+    }
+    else{
+        t = wantedtype;
+    }*/
     
     STO newCall = new VarSTO("new",t);// temp for new call 
     if(t instanceof ErrorType){
@@ -467,10 +502,14 @@ class MyParser extends parser
      else {
       typ = t;
      }
+
      STO result = new VarSTO(t.getName(),typ); // struct var thats goes int the table
      STO sto = new VarSTO(t.getName(),typ); // temp
-     Vector<STO> overloaded= ((StructType)typ).OverloadCheckStructCall(typ.getName()); // of constructors
+     
+     Vector<STO> overloaded = ((StructType)typ).OverloadCheckStructCall(typ.getName()); // of constructors
+
 		 if (overloaded.size() == 1) { // non overload case
+
           int overParSize = ((FuncSTO)overloaded.get(0)).getParams().size();
           int parSize = params.size();
           fun = overloaded.get(0); // get the function from the table
@@ -533,8 +572,9 @@ class MyParser extends parser
 
                         }
                     }
-                    else {
+                    else {  // regular no param case
                        result = new VarSTO(id,typ);
+                       result.setIsPointer(this.getInNew());
                          //Assembly Write: structcall
                       if(m_symtab.getLevel() == 1){
                           result.setOffset(id);
@@ -546,6 +586,11 @@ class MyParser extends parser
                           codegen.setholdOff(false);
                     
                       }
+                      // new case
+                      else if(result.getIsPointer()){
+                          result.setOffset(String.valueOf(offsetCnt * -4));
+                          result.setBase("%fp");
+                      }
                       else{
                          offsetCnt = offsetCnt + result.getType().getSize()/4;
                          result.setOffset(String.valueOf(offsetCnt * -4));
@@ -554,7 +599,6 @@ class MyParser extends parser
                       result.setStructName(fun.getStructName());
                       result.setAssemblyName(((FuncSTO)fun).getAssemblyName());
 
-                  
                       codegen.DoCtor(result, fun);
 
                       if(m_symtab.getLevel() == 1){
@@ -637,8 +681,9 @@ class MyParser extends parser
 
 
                  }
-                 else {
+                 else { //regular nonzero param case
                     result = new VarSTO(id,typ);
+                    result.setIsPointer(this.getInNew());
                     //Assembly Write: structcall
                   if(m_symtab.getLevel() == 1){
                      result.setOffset(id);
@@ -649,6 +694,11 @@ class MyParser extends parser
                      }
                      codegen.setholdOff(false);
                   
+                  }
+                  // new case
+                  else if(result.getIsPointer()){
+                     result.setOffset(String.valueOf(offsetCnt * -4));
+                     result.setBase("%fp");
                   }
                   else{
                      offsetCnt = offsetCnt + result.getType().getSize()/4;
@@ -746,8 +796,11 @@ class MyParser extends parser
 
 
            }
+           // regular overload case
            else {
+
               result = new VarSTO(id,typ);
+              result.setIsPointer(this.getInNew()); 
 
               //Assembly Write: structcall
               if(m_symtab.getLevel() == 1){
@@ -757,8 +810,13 @@ class MyParser extends parser
                   if(codegen.getholdOff()){
                       codegen.TimeToWrite();
                   }
-                      codegen.setholdOff(false);
+                  codegen.setholdOff(false);
                     
+              }
+              // new case
+              else if(result.getIsPointer()){
+                  result.setOffset(String.valueOf(offsetCnt * -4));
+                  result.setBase("%fp");
               }
               else{
                   offsetCnt = offsetCnt + result.getType().getSize()/4;
@@ -767,6 +825,9 @@ class MyParser extends parser
               }
                
               if(params.isEmpty()){
+                  
+                 // System.out.println("fun: "+ fun.getName()); 
+                  result.setAssemblyName("void");
                   codegen.DoCtor(result, result);
               }
               else{
@@ -3964,7 +4025,7 @@ class MyParser extends parser
         if(sto instanceof ErrorSTO){
             return sto;
         }
-        VarSTO result = new VarSTO("*" + sto.getName(),((PointerType)sto.getType()).getNext());
+        VarSTO result = new VarSTO(sto.getName(),((PointerType)sto.getType()).getNext());
         if(!(((PointerType)sto.getType()).getNext() instanceof ArrayType)){
             result.setIsModifiable(true);
             result.setIsAddressable(true);
@@ -4039,16 +4100,26 @@ class MyParser extends parser
         if(sto.getType() instanceof PointerType) {
             if(params.size() == 0){
                 if(!(((PointerType)sto.getType()).getNext() instanceof StructType)) {
+                    
+                    codegen.DoNew(sto);
                     return sto;
                 }
                 else if(((PointerType)sto.getType()).getNext() instanceof StructType){
-                   this.DoCtorStructs("new" + sto.getName(), ((PointerType)sto.getType()).getNext(), new Vector<STO>() ,params);
+                   codegen.DoNew(sto);
+                   STO def = this.DoDereference(sto);
+                   this.setInNew(def.getIsPointer());
+            
+                   this.DoCtorStructs(def.getName(), def.getType(), new Vector<STO>() ,params);
         
                 }
             }
             else{
                 if(((PointerType)sto.getType()).getNext() instanceof StructType){
-                   this.DoCtorStructs("new" + sto.getName(), ((PointerType)sto.getType()).getNext(), new Vector<STO>()  ,params);
+                   codegen.DoNew(sto);
+                   STO def = this.DoDereference(sto);
+                   this.setInNew(def.getIsPointer());
+        
+                   this.DoCtorStructs(def.getName(), def.getType(), new Vector<STO>()  ,params);
         
                 }
                 else if(!(((PointerType)sto.getType()).getNext() instanceof StructType)) {

@@ -1527,7 +1527,7 @@ public class AssemblyCodeGenerator {
 
         // ! s.name(...)
         this.increaseIndent();
-        this.writeAssembly(NO_PARAM, "! "+sto.getName()+"."+func.getName()+ "( ... )");
+        this.writeAssembly(NO_PARAM, "! "+sto.getName()+"."+sto.getType().getName()+ "( ... )");
         this.decreaseIndent();
 
         // set  offset, %o0
@@ -1539,6 +1539,13 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%o0", "%o0");
         this.decreaseIndent();
+
+        if(sto.getIsPointer()){
+            // ld [%o0] %o0
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
+            this.decreaseIndent();
+        }
 
         // call  funccall
         this.increaseIndent();
@@ -1563,6 +1570,8 @@ public class AssemblyCodeGenerator {
     // functionf for passing "this" parameter
     public void DoCtorThis(STO sto) {
 
+        this.writeAssembly(NEWLINE);
+
          // set  offset, %o0
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), "%o0");
@@ -1572,6 +1581,13 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%o0", "%o0");
         this.decreaseIndent();
+
+        if(sto.getIsPointer()){
+            // ld [%o0], %o0
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
+            this.decreaseIndent();
+        }
 
     }
 
@@ -4235,7 +4251,7 @@ public class AssemblyCodeGenerator {
 
         // ! comment
         this.increaseIndent();
-        this.writeAssembly(NO_PARAM, "! "+result.getName());
+        this.writeAssembly(NO_PARAM, "! *"+result.getName());
         this.decreaseIndent();
 
         //set sto.offset, %l7
@@ -4329,6 +4345,67 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, result.getBase(),"%o1", "%o1");
         this.decreaseIndent();
+
+
+        //st  %o0, [%o1]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
+        this.decreaseIndent();
+
+    }
+
+    // ------------------------------------------------------------
+    // This handles new
+    // ------------------------------------------------------------
+    public void DoNew(STO sto){
+
+        this.writeAssembly(NEWLINE);
+
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! new( "+sto.getName() + " )");
+        this.decreaseIndent();
+
+        // mov 1, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, MOV_OP, "1", "%o0");
+        this.decreaseIndent();
+
+        //set sto.base.size, %o1
+        this.increaseIndent();
+        int i = ((PointerType)sto.getType()).getBaseType().getSize();
+        this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(i), "%o1");
+        this.decreaseIndent();
+
+        //call  calloc
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, "calloc");
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+        //set sto.offset, %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, sto.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        //add sto.base, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%o1", "%o1");
+        this.decreaseIndent();
+
+
+        if(sto.getArrayTag()){
+           
+            //ld [%o1], %o1
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1");
+            this.decreaseIndent();
+
+        }
 
 
         //st  %o0, [%o1]
