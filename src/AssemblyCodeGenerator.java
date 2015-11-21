@@ -1201,7 +1201,7 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
 
-
+        // check for pointer, array
         if(expr.getArrayTag() || expr.getIsPointer()){
              this.increaseIndent();
              this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
@@ -3866,8 +3866,8 @@ public class AssemblyCodeGenerator {
                        this.writeAssembly(THREE_PARAM, ADD_OP, value.getBase(), "%l7", "%l7");
                        this.decreaseIndent();
 
-                       // ld [%l7] %l7 ---- there is one case that's been needed 11/17
-                       if(value.getArrayTag()){
+                       // ld [%l7] %l7 ---- there is one case that's been needed 11/17 for array and ref
+                       if(value.getArrayTag() || value.flag){
                            this.increaseIndent();
                            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
                            this.decreaseIndent();
@@ -3902,7 +3902,8 @@ public class AssemblyCodeGenerator {
                        this.decreaseIndent();
                     }
                     // pass by reference
-                    else{
+                    else if(!(param.getType() instanceof ArrayType)){
+                      
                        // set  offset %o1
                        this.increaseIndent();
                        this.writeAssembly(TWO_PARAM, SET_OP, value.getOffset(), "%o"+String.valueOf(reg));
@@ -3912,6 +3913,7 @@ public class AssemblyCodeGenerator {
                        this.increaseIndent();
                        this.writeAssembly(THREE_PARAM, ADD_OP, value.getBase(), "%o"+String.valueOf(reg), "%o"+String.valueOf(reg));
                        this.decreaseIndent();
+
 
                        // ADDED if arg passed in to function param is a ref
                        if(value.flag == true) {

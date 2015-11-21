@@ -93,6 +93,11 @@ class FuncSTO extends STO
         String name = "";
         for(int i =0; i < params.size();i++) {
            name = name.concat(params.get(i).getType().getName());
+           if(name.contains("[")) {
+              name = name.replace("[","$");
+              name = name.replace("]","$");
+           }
+
            if(i == params.size()-1) {
               break;
            }

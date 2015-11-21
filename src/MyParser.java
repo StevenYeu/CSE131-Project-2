@@ -826,7 +826,6 @@ class MyParser extends parser
                
               if(params.isEmpty()){
                   
-                 // System.out.println("fun: "+ fun.getName()); 
                   result.setAssemblyName("void");
                   codegen.DoCtor(result, result);
               }
@@ -1972,7 +1971,7 @@ class MyParser extends parser
             paramCnt++;
             par.setBase("%fp");
 
-            
+
             sto.addParam(par);
             m_symtab.insert(par);
         }
@@ -3630,12 +3629,14 @@ class MyParser extends parser
                 
                 
             }
-
             result = new VarSTO(id,aTopType);
         }
 
-        if (result.getName().contains("&") || result.getType() instanceof ArrayType) {
+        if (result.getName().contains("&")) {
             result.setName(result.getName().substring(1));
+            result.flag = true;
+        }
+        if( result.getType() instanceof ArrayType ) {
             result.flag = true;
         }
 
