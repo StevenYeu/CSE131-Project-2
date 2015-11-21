@@ -900,7 +900,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), reg, reg);
         this.decreaseIndent();
     
-        if(sto.getStructTag() || sto.getIsPointer()){
+        if(sto.getStructTag() || sto.getIsPointer() || sto.flag){
             // ld [%o0], %o0
             this.increaseIndent();
             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
@@ -3904,7 +3904,7 @@ public class AssemblyCodeGenerator {
                        this.decreaseIndent();
                     }
                     // pass by reference
-                    else if(!(param.getType() instanceof ArrayType)){
+                    else{
                       
                        // set  offset %o1
                        this.increaseIndent();
