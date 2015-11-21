@@ -4153,6 +4153,7 @@ class MyParser extends parser
            m_errors.print(Formatter.toString(ErrorMsg.error16_Delete, sto.getType().getName()));
            return new ErrorSTO("error");           
         }
+        codegen.DoDelete(sto);
         return sto;
     }
 

@@ -2325,8 +2325,9 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%l7", "%l7");
         this.decreaseIndent();
-
-        if(sto.flag == true || sto.getArrayTag() || sto.getStructTag()) {
+        
+        // changed 11/21 sto.getIstPointer 
+        if(sto.flag == true || sto.getArrayTag() || sto.getStructTag() || sto.getIsPointer()) {
             // ld    [%l7], %l7
            this.increaseIndent();
            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
@@ -4397,8 +4398,8 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%o1", "%o1");
         this.decreaseIndent();
 
-
-        if(sto.getArrayTag()){
+        // added 11/21 sto.getIsPointer()
+        if(sto.getArrayTag() || sto.getIsPointer() ){
            
             //ld [%o1], %o1
             this.increaseIndent();
@@ -4411,6 +4412,89 @@ public class AssemblyCodeGenerator {
         //st  %o0, [%o1]
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
+        this.decreaseIndent();
+
+    }
+
+    public void DoDelete(STO deleted) {
+
+        this.writeAssembly(NEWLINE);
+
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! delete( "+deleted.getName() + " )");
+        this.decreaseIndent();
+
+
+        //set deleted.offset, %l7
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, deleted.getOffset(), "%l7");
+        this.decreaseIndent();
+
+        //add sto.base, %l7, %l7
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, deleted.getBase(),"%l7", "%l7");
+        this.decreaseIndent();
+
+        //ld [%l7] %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]","%o0");
+        this.decreaseIndent();
+
+        //call  .$$.ptrCheck
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP, DOLLAR + "ptrCheck");
+        this.decreaseIndent();
+
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+
+
+        //set deleted.offset, %l7
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, deleted.getOffset(), "%l7");
+        this.decreaseIndent();
+
+        //add sto.base, %l7, %l7
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, deleted.getBase(),"%l7", "%l7");
+        this.decreaseIndent();
+
+        //ld [%l7] %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]","%o0");
+        this.decreaseIndent();
+
+
+        //call  free
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, CALL_OP,"free");
+        this.decreaseIndent();
+
+
+        //nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+
+        //set deleted.offset, %l7
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, deleted.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        //add sto.base, %l7, %l7
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, deleted.getBase(),"%o1", "%o1");
+        this.decreaseIndent();
+
+        //ld [%l7] %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%g0","[%o1]");
         this.decreaseIndent();
 
     }
