@@ -2892,7 +2892,7 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
         // for array
-        if(a.getArrayTag() || a.getStructTag()){
+        if(a.getArrayTag() || a.getStructTag() || a.flag){
             //ld    [%o1], %o1
             this.increaseIndent();
             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1");
@@ -2958,8 +2958,8 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, a.getBase(), "%o1", "%o1");
         this.decreaseIndent();
 
-        // for array
-        if(a.getArrayTag() || a.getStructTag()){
+        // for array struct ref
+        if(a.getArrayTag() || a.getStructTag() || a.flag){
             //ld    [%o1], %o1
             this.increaseIndent();
             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1");
