@@ -575,6 +575,7 @@ class MyParser extends parser
                     else {  // regular no param case
                        result = new VarSTO(id,typ);
                        result.setIsPointer(this.getInNew());
+                       this.setInNew(false);
                          //Assembly Write: structcall
                       if(m_symtab.getLevel() == 1){
                           result.setOffset(id);
@@ -684,6 +685,7 @@ class MyParser extends parser
                  else { //regular nonzero param case
                     result = new VarSTO(id,typ);
                     result.setIsPointer(this.getInNew());
+                    this.setInNew(false);
                     //Assembly Write: structcall
                   if(m_symtab.getLevel() == 1){
                      result.setOffset(id);
@@ -800,7 +802,8 @@ class MyParser extends parser
            else {
 
               result = new VarSTO(id,typ);
-              result.setIsPointer(this.getInNew()); 
+              result.setIsPointer(this.getInNew());
+              this.setInNew(false);
 
               //Assembly Write: structcall
               if(m_symtab.getLevel() == 1){
@@ -2816,7 +2819,9 @@ class MyParser extends parser
 
                     if(!(result instanceof FuncSTO)){
                         result.setArrayTag(locals.get(i).getArrayTag());
-
+                        if(locals.get(i).getType() instanceof PointerType){
+                            result.setIsPointer(true);
+                        }
                         offsetCnt++;
                         result.setOffset(String.valueOf(offsetCnt * -4));
                         result.setBase("%fp");
@@ -3633,6 +3638,7 @@ class MyParser extends parser
         }
 
         if (result.getName().contains("&")) {
+
             result.setName(result.getName().substring(1));
             result.flag = true;
         }

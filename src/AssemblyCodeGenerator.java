@@ -1523,6 +1523,7 @@ public class AssemblyCodeGenerator {
     // ---------------------------------------------------------------------------------
     public void DoCtor(STO sto, STO func){
         
+
         this.writeAssembly(NEWLINE);
 
         // ! s.name(...)
@@ -1675,7 +1676,8 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%o0", "%o0");
         this.decreaseIndent();
 
-        if(sto.getArrayTag() || sto.getIsPointer()) {
+        // check for array, pointer and ref
+        if(sto.getArrayTag() || sto.getIsPointer() || sto.flag) {
 
             
             this.increaseIndent();
@@ -4332,7 +4334,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%o0", "%o0");
         this.decreaseIndent();
 
-        if(sto.getArrayTag()){
+        if(sto.getArrayTag() || sto.flag){
             // ld [%o0] %o0
             this.increaseIndent();
             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
@@ -4400,9 +4402,8 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%o1", "%o1");
         this.decreaseIndent();
 
-        // added 11/21 sto.getIsPointer()
-        if(sto.getArrayTag() || sto.getIsPointer() ){
-           
+        // added 11/21 sto.getIsPointer() and sto.flag
+        if(sto.getArrayTag() || sto.getIsPointer() || sto.flag){ 
             //ld [%o1], %o1
             this.increaseIndent();
             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1");
