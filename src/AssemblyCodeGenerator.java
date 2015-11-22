@@ -3743,11 +3743,19 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
 
-
-        // st %o0, [%o1]
-        this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]"); 
-        this.decreaseIndent();
+        if(sto.getType() instanceof FloatType && !(func.flag)) {
+           // st %o0, [%o1]
+           this.increaseIndent();
+           this.writeAssembly(TWO_PARAM, STORE_OP, "%f0", "[%o1]"); 
+           this.decreaseIndent();
+        }
+        else {
+           // st %o0, [%o1]
+           this.increaseIndent();
+           this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]"); 
+           this.decreaseIndent();
+        
+        }
     }
 
     //------------------------------------------
@@ -4134,10 +4142,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(NEWLINE);
 
         String reg = "%l7";
-        if(expr.getType() instanceof FloatType){
-            reg = "%f0";
-        }
-        if(sto.flag = true){
+        if(sto.flag == true){
             reg = "%i0";
         }
 
@@ -4156,26 +4161,39 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(), reg, reg);
         this.decreaseIndent();
 
-        // ld   [%l7], %i0
-        this.increaseIndent();
-        if(expr.getType() instanceof FloatType) {
-           this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", "%f0"); 
+       
+        if(expr.getIsPointer()) {
+              this.increaseIndent();
+              this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", reg);
+              this.decreaseIndent();
+            
         }
-        else {
-           // Type Promotion
-           if(promote != null){
-               this.writeAssembly(TWO_PARAM, LOAD_OP, "[%f0]", "%i0"); 
-                
-               this.decreaseIndent();
-               this.DoTypePromotion(promote, "%f0", "%i0");
-               this.increaseIndent();
-           }
-           else{
-               this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", "%i0");
-           }
-        }
-        this.decreaseIndent();
 
+
+        if(!sto.flag) {
+                // ld   [%l7], %i0
+           this.increaseIndent();
+           if(expr.getType() instanceof FloatType) {
+               // float case
+              this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", "%f0"); 
+           }
+           else {
+              // Type Promotion int to float
+              if(promote != null){
+                  this.writeAssembly(TWO_PARAM, LOAD_OP, "[%f0]", "%i0"); 
+                
+                  this.decreaseIndent();
+                  this.DoTypePromotion(promote, "%f0", "%i0");
+                  this.increaseIndent();
+              }
+              else{
+                  // non float case
+                  this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", "%i0");
+              }
+           }
+           this.decreaseIndent();
+        
+        }
 
         //call name.type.fini
         this.increaseIndent();
