@@ -398,7 +398,7 @@ public class AssemblyCodeGenerator {
         
         // .asciz "Nullpointer error msg"
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, AZ, "\"Attempt to deference NULL pointer.\\n\"");
+        this.writeAssembly(ONE_PARAM, AZ, "\"Attempt to dereference NULL pointer.\\n\"");
         this.decreaseIndent();
 
 
