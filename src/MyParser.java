@@ -2341,6 +2341,7 @@ class MyParser extends parser
                      if(fun.flag == true) { // return by ref set to Mod L
                         result.setIsModifiable(true);
                         result.setIsAddressable(true);
+                        result.flag = true;
                      }
                      else { // if return by value set to R val
                         result.setIsModifiable(false);
@@ -2538,6 +2539,7 @@ class MyParser extends parser
                  if(fun.flag == true) { // return by ref set to Mod L
                     result.setIsModifiable(true);
                     result.setIsAddressable(true);
+                    result.flag = true;
                     return result;
                  }
                 else { // if return by value set to R val
@@ -2630,7 +2632,8 @@ class MyParser extends parser
               	  if(fun.flag == true) { // return by ref set to Mod L
               	     result.setIsModifiable(true);
               	     result.setIsAddressable(true);
-              	     return result;
+              	     result.flag = true;
+                     return result;
               	  }
               	  else { // if return by value set to R val
               	     result.setIsModifiable(false);
@@ -3752,7 +3755,8 @@ class MyParser extends parser
           
             codegen.DoReturnNonVoid(m_symtab.getFunc(), expr, promote);
         }
-        return new ExprSTO("return", m_symtab.getFunc().getReturnType() );
+        STO result = new ExprSTO("return", m_symtab.getFunc().getReturnType() );
+        return result;
     }
 
 

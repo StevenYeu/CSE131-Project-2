@@ -1202,7 +1202,7 @@ public class AssemblyCodeGenerator {
 
 
         // check for pointer, array
-        if(expr.getArrayTag() || expr.getIsPointer()){
+        if(expr.getArrayTag() || expr.getIsPointer() || expr.flag){
              this.increaseIndent();
              this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
              this.decreaseIndent();
@@ -4133,37 +4133,45 @@ public class AssemblyCodeGenerator {
         
         this.writeAssembly(NEWLINE);
 
+        String reg = "%l7";
+        if(expr.getType() instanceof FloatType){
+            reg = "%f0";
+        }
+        if(sto.flag = true){
+            reg = "%i0";
+        }
+
         // ! comment
         this.increaseIndent();
-        this.writeAssembly(NO_PARAM, "! return"+ expr.getName()); 
+        this.writeAssembly(NO_PARAM, "! return "+ expr.getName()); 
         this.decreaseIndent();
 
         // set  offset, %l7
         this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, SET_OP, expr.getOffset(), "%l7"); 
+        this.writeAssembly(TWO_PARAM, SET_OP, expr.getOffset(), reg); 
         this.decreaseIndent();
 
         // add  base, %l7, %l7
         this.increaseIndent();
-        this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(), "%l7", "%l7");
+        this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(), reg, reg);
         this.decreaseIndent();
 
         // ld   [%l7], %i0
         this.increaseIndent();
         if(expr.getType() instanceof FloatType) {
-           this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%f0"); 
+           this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", "%f0"); 
         }
         else {
            // Type Promotion
            if(promote != null){
-               this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%i0"); 
+               this.writeAssembly(TWO_PARAM, LOAD_OP, "[%f0]", "%i0"); 
                 
                this.decreaseIndent();
                this.DoTypePromotion(promote, "%f0", "%i0");
                this.increaseIndent();
            }
            else{
-               this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%i0");
+               this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", "%i0");
            }
         }
         this.decreaseIndent();
