@@ -2260,9 +2260,12 @@ class MyParser extends parser
             
         }
 
-        if(a.getArrayTag()){
-            result.setArrayTag(true);
-        }
+        // pass along tags
+        result.setArrayTag(a.getArrayTag());
+        result.setStructTag(a.getStructTag());
+        result.setIsPointer(a.getIsPointer());
+        result.flag = a.flag;
+        
         result.setIsAddressable(false);
         result.setIsModifiable(false);
 
@@ -2814,11 +2817,13 @@ class MyParser extends parser
                       this.setStructFunCall(true);
                     }
                     // Assembly write: struct call
-       
-                    STO result = locals.get(i);
-
-                    if(!(result instanceof FuncSTO)){
+                    STO result = new VarSTO(locals.get(i).getName(), locals.get(i).getType());
+                    if(!(locals.get(i) instanceof FuncSTO)){
+                        // pass along all the tag
+                        result.flag = locals.get(i).flag;
+                        result.setStructTag(locals.get(i).getStructTag());
                         result.setArrayTag(locals.get(i).getArrayTag());
+                        result.setStructOffset(locals.get(i).getStructOffset());
                         if(locals.get(i).getType() instanceof PointerType){
                             result.setIsPointer(true);
                         }
@@ -3169,6 +3174,13 @@ class MyParser extends parser
                 int val = -offsetCnt * result.getType().getSize();
                 String value = String.valueOf(val);
                 result.setOffset(value);
+
+                // pass along tags
+            
+                //result.setArrayTag(a.getArrayTag());
+                //result.setStructTag(a.getStructTag());
+                //result.setIsPointer(a.getIsPointer());
+                //result.flag = a.flag;
 
                 // float case
                 if(a.getType() instanceof FloatType || b.getType() instanceof FloatType){
