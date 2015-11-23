@@ -661,9 +661,9 @@ public class AssemblyCodeGenerator {
 
 
     // ----------------------------------------------------------------------------------
-    // This is for global/static uninit vars decl, now includes 1D array
+    // This is for global/static uninit vars decl, now includes 1D array, and static 
     // ----------------------------------------------------------------------------------
-    public void DoGlobalVarDecl(STO sto){
+    public void DoGlobalVarDecl(STO sto, String name, String optstatic){
 
         this.writeAssembly(NEWLINE);
 
@@ -677,13 +677,15 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(4));
         this.decreaseIndent();
 
-        // .global varname
-        this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, GLOBAL, sto.getName());
-        this.decreaseIndent();
+        if(optstatic == null){
+            // .global varname
+            this.increaseIndent();
+            this.writeAssembly(ONE_PARAM, GLOBAL, sto.getName());
+            this.decreaseIndent();
+        }
 
         // varname:
-        this.writeAssembly(NO_PARAM,sto.getName()+":");
+        this.writeAssembly(NO_PARAM,name+":");
 
         // .skip # (should auto init var to 0/false)
         this.increaseIndent();
@@ -711,9 +713,9 @@ public class AssemblyCodeGenerator {
     }
 
     // ----------------------------------------------------------------------------------
-    // This is for static uninit vars decl
+    // This is for static init var decl starter
     // ----------------------------------------------------------------------------------
-    public void DoStaticLocalVarDecl(STO sto, String name){
+    public void DoStaticGuardStart(STO sto, String name){
 
         this.writeAssembly(NEWLINE);
 
@@ -728,12 +730,11 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
         // varname:
-        this.writeAssembly(NO_PARAM,name+":");
+        this.writeAssembly(NO_PARAM, name+":");
 
         // .skip # (should anto init var to 0/false
         this.increaseIndent();
         this.writeAssembly(ONE_PARAM, SKIP, String.valueOf(sto.getType().getSize())); 
-        this.writeAssembly(NEWLINE);
         this.decreaseIndent();
 
         this.writeAssembly(NEWLINE);
@@ -747,8 +748,79 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(4));
         this.decreaseIndent();
-     
+
+        this.writeAssembly(NEWLINE);
+
+        // ! Start init guard
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! Start init guard");
+        this.decreaseIndent();
+
+        // set name, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, name, "%o0");
+        this.decreaseIndent();
+
+        // ld [%o0], %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
+        this.decreaseIndent();
+
+        // cmp %o0, %g0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, CMP_OP, "%o0", "%g0");
+        this.decreaseIndent();
+
+        //bne name.done
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, BNE_OP, name+".done");
+        this.decreaseIndent();
+
+        // nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+
+        // pure formatting indent
+        this.increaseIndent();
+
     }
+
+    // -------------------------------------------------------------------------
+    // This is for static init var decl starter
+    // -------------------------------------------------------------------------
+    public void DoStaticGuardEnd(String name){
+
+        // pure formatting indent
+        this.decreaseIndent();
+
+        this.writeAssembly(NEWLINE);
+    
+        // ! End init guard
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! End init guard");
+        this.decreaseIndent();
+
+        // set name, %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, name, "%o0");
+        this.decreaseIndent();
+        
+        // mov 1, %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, MOV_OP, "1", "%o1");
+        this.decreaseIndent();
+
+        // st %o1, [%o0]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%o1", "[%o0]");
+        this.decreaseIndent();
+
+        // name.done:
+        this.writeAssembly(NO_PARAM, name+".done:");
+        
+    }
+
 
     // ----------------------------------------------------------------------------------
     // This is for static init vars decl -- to be implemented
@@ -1053,7 +1125,7 @@ public class AssemblyCodeGenerator {
     // ----------------------------------------------------------------------------------
     // This is for global/static init var decl
     // ----------------------------------------------------------------------------------
-    public void DoGlobalVarInitLit(STO sto, String num){
+    public void DoGlobalVarInitLit(STO sto, String num, String name, String optstatic){
         
         this.writeAssembly(NEWLINE);
         
@@ -1067,13 +1139,15 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(4));
         this.decreaseIndent();
 
-        // .global varname
-        this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, GLOBAL, sto.getName());
-        this.decreaseIndent();
+        if(optstatic == null){
+            // .global varname
+            this.increaseIndent();
+            this.writeAssembly(ONE_PARAM, GLOBAL, sto.getName());
+            this.decreaseIndent();
+        }
 
         // varname:
-        this.writeAssembly(NO_PARAM,sto.getName()+":");
+        this.writeAssembly(NO_PARAM, name+":");
 
         this.increaseIndent();
         if(sto.getType() instanceof FloatType){
@@ -1084,7 +1158,6 @@ public class AssemblyCodeGenerator {
             // .word  #
             this.writeAssembly(ONE_PARAM, WORD, num);
         }
-        this.writeAssembly(NEWLINE);
         this.decreaseIndent();
 
         this.writeAssembly(NEWLINE);
@@ -1102,7 +1175,7 @@ public class AssemblyCodeGenerator {
     }
 
 
-    public void DoGlobalVarInitVar(STO sto){
+    public void DoGlobalVarInitVar(STO sto, String optstatic){
         
         this.writeAssembly(NEWLINE);
 
@@ -1117,9 +1190,11 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
         // .global varname
-        this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, GLOBAL, sto.getName());
-        this.decreaseIndent();
+        if(optstatic == null){
+            this.increaseIndent();
+            this.writeAssembly(ONE_PARAM, GLOBAL, sto.getName());
+            this.decreaseIndent();
+        }
 
         // varname:
         this.writeAssembly(NO_PARAM,sto.getName()+":");
@@ -1164,6 +1239,8 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, SAVE_OP, "%sp", "%g1", "%sp");
         this.decreaseIndent();
+
+        this.increaseIndent();
         
     }
 
@@ -1421,6 +1498,8 @@ public class AssemblyCodeGenerator {
         
         this.writeAssembly(NEWLINE);
 
+        this.decreaseIndent();
+
         // ! comment
         this.increaseIndent();
         this.writeAssembly(NO_PARAM, "! End of function " + INIT + sto.getName() + ".fini" );
@@ -1549,7 +1628,8 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%o0", "%o0");
         this.decreaseIndent();
 
-        if(sto.getIsPointer()){
+        // add arry check -- 11/22 might breaks shit
+        if(sto.getIsPointer() || sto.getArrayTag()){
             // ld [%o0] %o0
             this.increaseIndent();
             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
@@ -1591,7 +1671,8 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%o0", "%o0");
         this.decreaseIndent();
 
-        if(sto.getIsPointer()){
+        // add array check -- 11/22 might break shit
+        if(sto.getIsPointer() || sto.getArrayTag()){
             // ld [%o0], %o0
             this.increaseIndent();
             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
