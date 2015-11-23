@@ -277,7 +277,7 @@ class MyParser extends parser
         }
         //Assembly Writing: for init global/static var decl
         //should be the same as init for general global/static init
-        if(m_symtab.getLevel() == 1 || (optstatic != null)){
+        if(m_symtab.getLevel() == 1){
             // set base and offset
             sto.setBase("%g0");
             sto.setOffset(id);
@@ -307,17 +307,43 @@ class MyParser extends parser
             }
             //var init
             else{
-                codegen.DoGlobalVarInitVar(sto);
+                codegen.setholdOff(false);
+
+                codegen.DoGlobalVarInitVar(sto, optstatic);
+
+                codegen.TimeToWrite();
+
+                codegen.DoVarAssign(sto, expr, null);
+
+                //a sto for this init func, does nothing except holds offset and base
+                STO func = new FuncSTO("tempFunc");
+                int val = offsetCnt*4;
+                func.setOffset("+"+String.valueOf(val));
+                func.setBase("92");
+
+                // init func ender
+                codegen.initGlobalVarEnd(sto, func);
+                offsetCnt = 0;     //reset counter after each init 
+
+
+
             }
         }
         // local init
         else{
             //set base and offset
-            sto.setBase("%fp");
-            offsetCnt++;
-            int val = -offsetCnt * t.getSize();
-            String value = String.valueOf(val);
-            sto.setOffset(value);
+            if(optstatic != null){
+                sto.setBase("%g0");
+                String name = m_symtab.getFunc().getName()+"."+m_symtab.getFunc().getAssemblyName()+"."+id;
+                sto.setOffset(name);
+            }
+            else{
+                sto.setBase("%fp");
+                offsetCnt++;
+                int val = -offsetCnt * t.getSize();
+                String value = String.valueOf(val);
+                sto.setOffset(value);
+            }
 
             // const init
             if(expr instanceof ConstSTO){
@@ -326,17 +352,39 @@ class MyParser extends parser
                 int i;
 
                 if(typ instanceof FloatType){
-                    codegen.DoFloatAssign(sto, expr, null);
+                    //static case
+                    if(optstatic != null){
+                        float f = exp.getFloatValue();
+                        codegen.DoGlobalVarInitLit(sto, String.valueOf(f), sto.getOffset(), optstatic);
+                    }
+                    // nonstatic case
+                    else{
+                        codegen.DoFloatAssign(sto, expr, null);
+                    }
                 }
                 else if(typ instanceof IntType){
                     i = exp.getIntValue();
                     String str = String.valueOf(i);
-                    codegen.DoConstAssign(sto, str, exp.getName());
+                    // static case
+                    if(optstatic != null){
+                        codegen.DoGlobalVarInitLit(sto, str, sto.getOffset(), optstatic);
+                    }
+                    // nonstatic case
+                    else{
+                        codegen.DoConstAssign(sto, str, exp.getName());
+                    }
                 }
                 else if(typ instanceof BoolType){
                     i = exp.getBoolValue() ? 1 : 0;
                     String str = String.valueOf(i);
-                    codegen.DoConstAssign(sto, str, exp.getName());
+                    // static case
+                    if(optstatic != null){
+                        codegen.DoGlobalVarInitLit(sto, str, sto.getOffset(), optstatic);
+                    }
+                    // nonstatic case
+                    else{
+                        codegen.DoConstAssign(sto, str, exp.getName());
+                    }
 
                 }
                 // to be implement array, struct etc
@@ -344,8 +392,20 @@ class MyParser extends parser
             }
             //var init
             else{
+                if(optstatic != null){
+                    codegen.setholdOff(false);
+
+                    codegen.DoGlobalVarDecl(sto, sto.getOffset() ,optstatic);
+                    codegen.DoStaticGuardStart(sto, ".$.init."+sto.getOffset());
+
+                    codegen.TimeToWrite();
+                }
 
                 codegen.DoVarAssign(sto, expr, null);
+
+                if(optstatic != null){
+                    codegen.DoStaticGuardEnd(".$.init."+sto.getOffset());
+                }
                 
 
             }
@@ -537,7 +597,7 @@ class MyParser extends parser
                        if(m_symtab.getLevel() == 1){
                           result.setOffset(id);
                           result.setBase("%g0");
-                          codegen.DoGlobalVarInitVar(result);
+                          codegen.DoGlobalVarInitVar(result, optstatic);
                           if(codegen.getholdOff()){
                             codegen.TimeToWrite();
                           }
@@ -602,7 +662,7 @@ class MyParser extends parser
                       if(m_symtab.getLevel() == 1){
                           result.setOffset(id);
                           result.setBase("%g0");
-                          codegen.DoGlobalVarInitVar(result);
+                          codegen.DoGlobalVarInitVar(result, optstatic);
                           if(codegen.getholdOff()){
                               codegen.TimeToWrite();
                           }
@@ -678,7 +738,7 @@ class MyParser extends parser
                     if(m_symtab.getLevel() == 1){
                        result.setOffset(id);
                        result.setBase("%g0");
-                       codegen.DoGlobalVarInitVar(result);
+                       codegen.DoGlobalVarInitVar(result, optstatic);
                        if(codegen.getholdOff()){
                          codegen.TimeToWrite();
                        }
@@ -747,7 +807,7 @@ class MyParser extends parser
                   if(m_symtab.getLevel() == 1){
                      result.setOffset(id);
                      result.setBase("%g0");
-                     codegen.DoGlobalVarInitVar(result);
+                     codegen.DoGlobalVarInitVar(result, optstatic);
                      if(codegen.getholdOff()){
                          codegen.TimeToWrite();
                      }
@@ -822,7 +882,7 @@ class MyParser extends parser
               if(m_symtab.getLevel() == 1){
                  result.setOffset(id);
                  result.setBase("%g0");
-                 codegen.DoGlobalVarInitVar(result);
+                 codegen.DoGlobalVarInitVar(result, optstatic);
                  if(codegen.getholdOff()){
                    codegen.TimeToWrite();
                  }
@@ -899,7 +959,7 @@ class MyParser extends parser
               if(m_symtab.getLevel() == 1){
                   result.setOffset(id);
                   result.setBase("%g0");
-                  codegen.DoGlobalVarInitVar(result);
+                  codegen.DoGlobalVarInitVar(result, optstatic);
                   if(codegen.getholdOff()){
                       codegen.TimeToWrite();
                   }
@@ -1196,7 +1256,7 @@ class MyParser extends parser
                  
                     codegen.setholdOff(false);
                     
-                    codegen.DoGlobalVarInitVar(sto);
+                    codegen.DoGlobalVarInitVar(sto, optstatic);
                     
                     codegen.TimeToWrite();
 
@@ -1341,7 +1401,7 @@ class MyParser extends parser
                         codegen.setholdOff(false);
 
                         // init func header
-                        codegen.DoGlobalVarInitVar(sto);
+                        codegen.DoGlobalVarInitVar(sto, optstatic);
 
                         // write when the hold off is off
                         codegen.TimeToWrite();
@@ -1648,7 +1708,7 @@ class MyParser extends parser
             sto.setLitTag(true);
 
             //assembly for init global/static var decl
-            if(m_symtab.getLevel() == 1 || (optstatic != null)){
+            if(m_symtab.getLevel() == 1){
                 
                 //set offset and base
                 sto.setOffset(id);
@@ -1679,58 +1739,79 @@ class MyParser extends parser
             else{
 
                 // set base and offset
-                sto.setBase("%fp");
+                if(optstatic != null){
+                    sto.setBase("%g0");
+                    String name = m_symtab.getFunc().getName() + "." + m_symtab.getFunc().getAssemblyName() + "." + id;
+                    sto.setOffset(name);
+                }
+                else{
+                    sto.setBase("%fp");
                     
-                offsetCnt++;
-                int val = -offsetCnt * t.getSize();
-                String value = String.valueOf(val);
-                sto.setOffset(value);
+                    offsetCnt++;
+                    int val = -offsetCnt * t.getSize();
+                    String value = String.valueOf(val);
+                    sto.setOffset(value);
+                }
                     
                 ConstSTO exp = (ConstSTO)constexpr;
                 int i;
 
                 if(t instanceof FloatType){
-                    // Type Promotion
-                    if( constexpr.getType() instanceof IntType){
-                        STO promote = new ExprSTO("temp");
-                        offsetCnt ++;
-                        int exo = -offsetCnt * 4;
-                        promote.setBase("%fp");
-                        promote.setOffset(String.valueOf(exo));
-                    
-                    
-                        if(exp.getLitTag()){
-                        //treat non-lit const like var
-                            codegen.DoVarAssign(sto, constexpr, promote);
-                  
-                        }
-                        else{
-                            codegen.DoFloatAssign(sto,constexpr, promote);
-                        }
+                    if(optstatic != null){
+                        float f = exp.getFloatValue();
+                        codegen.DoGlobalVarInitLit(sto, String.valueOf(f), sto.getOffset(), optstatic);
                     }
                     else{
-                        // float to float
-                        if(exp.getLitTag()){
-                            codegen.DoVarAssign(sto, constexpr, null);
+                        // Type Promotion
+                        if( constexpr.getType() instanceof IntType){
+                            STO promote = new ExprSTO("temp");
+                            offsetCnt ++;
+                            int exo = -offsetCnt * 4;
+                            promote.setBase("%fp");
+                            promote.setOffset(String.valueOf(exo));
+                     
+                            if(exp.getLitTag()){
+                                //treat non-lit const like var
+                                codegen.DoVarAssign(sto, constexpr, promote);
+                            }
+                            else{
+                                codegen.DoFloatAssign(sto,constexpr, promote);
+                            }
                         }
-                    
                         else{
-                            codegen.DoFloatAssign(sto, constexpr, null);
+                            // float to float
+                            if(exp.getLitTag()){
+                                codegen.DoVarAssign(sto, constexpr, null);
+                            }
+                    
+                            else{
+                                codegen.DoFloatAssign(sto, constexpr, null);
+                            }
                         }
                     }
                 }
                 else if(t instanceof IntType){
                     i = exp.getIntValue();
                     String str = String.valueOf(i);
-                    codegen.DoConstAssign(sto, str, exp.getName());
+                    if(optstatic != null){
+                        codegen.DoGlobalVarInitLit(sto, str, sto.getOffset(), optstatic);
+                    }
+                    else{
+                        codegen.DoConstAssign(sto, str, exp.getName());
+                    }
                 }
                 else if(t instanceof BoolType){
                     i = exp.getBoolValue() ? 1 : 0;
                     String str = String.valueOf(i);
-                    codegen.DoConstAssign(sto, str, exp.getName());
+                    if(optstatic != null){
+                        codegen.DoGlobalVarInitLit(sto, str, sto.getOffset(), optstatic);
+                    }
+                    else{
+                        codegen.DoConstAssign(sto, str, exp.getName());
+                    }
 
                 }
-                // to be implement array, struct etc  
+                // to be implement array, struct -- dont need to do, doesn't make much sense 
 
             }
 
@@ -1776,7 +1857,7 @@ class MyParser extends parser
        Type t = sto.getType();
 
        //assembly for init global/static var decl
-       if(m_symtab.getLevel() == 1 || (optstatic != null)){
+       if(m_symtab.getLevel() == 1){
                 
            //set offset and base
            sto.setOffset(id);
@@ -1804,35 +1885,62 @@ class MyParser extends parser
                     
        }
        else{
-
-           // set base and offset
-           sto.setBase("%fp");
+           if(optstatic != null){
+               sto.setBase("%g0");
+               String name = m_symtab.getFunc().getName()+"."+m_symtab.getFunc().getAssemblyName()+"."+id;
+               sto.setOffset(name);
+           }
+           else{
+               // set base and offset
+               sto.setBase("%fp");
                     
-           offsetCnt++;
-           int val = -offsetCnt * t.getSize();
-           String value = String.valueOf(val);
-           sto.setOffset(value);
+               offsetCnt++;
+               int val = -offsetCnt * t.getSize();
+               String value = String.valueOf(val);
+               sto.setOffset(value);
+           }
                     
            int i;
 
            if(t instanceof FloatType){
-               if(exp.getLitTag()){
-                   codegen.DoVarAssign(sto, expr, null);
+               // static case
+               if(optstatic != null){
+                   float f = exp.getFloatValue();
+                   codegen.DoGlobalVarInitLit(sto, String.valueOf(f), sto.getOffset(), optstatic);
                }
+               // nonstatic case
                else{
-                   codegen.DoFloatAssign(sto, expr, null);
+                   if(exp.getLitTag()){
+                       codegen.DoVarAssign(sto, expr, null);
+                   }
+                   else{
+                       codegen.DoFloatAssign(sto, expr, null);
+                   }
                }
            }
            else if(t instanceof IntType){
                i = exp.getIntValue();
                String str = String.valueOf(i);
-               codegen.DoConstAssign(sto, str, exp.getName());
+               // static case
+               if(optstatic != null){
+                   codegen.DoGlobalVarInitLit(sto, str, sto.getOffset(), optstatic);
+               }
+               // nonstatic case
+               else{
+                   codegen.DoConstAssign(sto, str, exp.getName());
+               }
            }
            else if(t instanceof BoolType){
                i = exp.getBoolValue() ? 1 : 0;
                String str = String.valueOf(i);
-               codegen.DoConstAssign(sto, str, exp.getName());
-
+               // static case
+               if(optstatic != null){
+                   codegen.DoGlobalVarInitLit(sto, str, sto.getOffset(), optstatic);
+               }
+               // nonstatic case
+               else{
+                   codegen.DoConstAssign(sto, str, exp.getName());
+               }
            }
            // to be implement array, struct etc  
 

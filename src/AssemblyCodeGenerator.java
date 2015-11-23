@@ -1167,7 +1167,7 @@ public class AssemblyCodeGenerator {
     }
 
 
-    public void DoGlobalVarInitVar(STO sto){
+    public void DoGlobalVarInitVar(STO sto, String optstatic){
         
         this.writeAssembly(NEWLINE);
 
@@ -1182,9 +1182,11 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
         // .global varname
-        this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, GLOBAL, sto.getName());
-        this.decreaseIndent();
+        if(optstatic == null){
+            this.increaseIndent();
+            this.writeAssembly(ONE_PARAM, GLOBAL, sto.getName());
+            this.decreaseIndent();
+        }
 
         // varname:
         this.writeAssembly(NO_PARAM,sto.getName()+":");
@@ -1229,6 +1231,8 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, SAVE_OP, "%sp", "%g1", "%sp");
         this.decreaseIndent();
+
+        this.increaseIndent();
         
     }
 
@@ -1485,6 +1489,8 @@ public class AssemblyCodeGenerator {
     public void initGlobalVarEnd(STO sto, STO func){
         
         this.writeAssembly(NEWLINE);
+
+        this.decreaseIndent();
 
         // ! comment
         this.increaseIndent();
