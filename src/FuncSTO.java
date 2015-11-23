@@ -100,6 +100,9 @@ class FuncSTO extends STO
            if (name.contains("*")) {
               name = name.replace("*","$");
            }
+           if(name.contains("~")) {
+              name = name.replace("~","$");
+           }
 
            if(i == params.size()-1) {
               break;

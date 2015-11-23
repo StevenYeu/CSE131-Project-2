@@ -24,6 +24,7 @@ abstract class STO
     private String structName;
     private String AssemblyName;
     private boolean isPointer = false;
+    private boolean isGlobal = false;
 	//----------------------------------------------------------------
 	//
 	//----------------------------------------------------------------
@@ -215,6 +216,15 @@ abstract class STO
     public void setIsPointer(boolean b) {
        isPointer = b;
     }
+
+    public boolean getIsGlobal() {
+       return isGlobal;
+    }
+
+    public void setIsGlobal(boolean b) {
+       isGlobal = b;
+    }
+
 	//----------------------------------------------------------------
 	//	It will be helpful to ask a STO what specific STO it is.
 	//	The Java operator instanceof will do this, but these methods 

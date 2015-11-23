@@ -100,11 +100,19 @@ public class AssemblyCodeGenerator {
 
     private int loopCnt = 0;
 
+    // counter for CtorDtor
+    private int ctordtor = 0;
+
+
     // while loop branch label
     private Stack<Integer> wlabel = new Stack<Integer>();
 
     //branch label
     private Stack<Integer> blabel = new Stack<Integer>();
+
+    // DtorFuncs
+    private Stack<STO> Dtors = new Stack<STO>();
+    private Stack<Integer> numDtors = new Stack<Integer>();
 
     private boolean holdOff = false;
 
@@ -1900,15 +1908,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, SAVE_OP, "%sp", "-96", "%sp");
         this.decreaseIndent();
 
-        //ret
-        this.increaseIndent();
-        this.writeAssembly(NO_PARAM, RET_OP);
-        this.decreaseIndent();
-
-        //restore
-        this.increaseIndent();
-        this.writeAssembly(NO_PARAM, RESTORE_OP);
-        this.decreaseIndent();
+        this.DoDtorCall();
 
         
     }
@@ -4526,6 +4526,258 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(TWO_PARAM, STORE_OP, "%g0","[%o1]");
         this.decreaseIndent();
 
+    }
+
+
+    public void DoDtorHeader(STO dtor, STO offset) {
+
+        this.writeAssembly(NEWLINE);
+
+        Dtors.push(dtor);
+
+        ctordtor++;
+        numDtors.push(ctordtor);
+        String label = DOLLAR + "ctorDtor"+ "." + String.valueOf(ctordtor);
+
+        // .section .bss
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, SECTION, "\".bss\"");
+        this.decreaseIndent();
+
+        // .align  4 
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(4));
+        this.decreaseIndent();
+
+
+        // DTOR name:
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, label+":");
+        this.decreaseIndent();
+
+        // .skip  4 
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, SKIP, String.valueOf(4));
+        this.decreaseIndent();
+
+
+        // .section .text
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, SECTION, "\".text\"");
+        this.decreaseIndent();
+
+
+        // .align  4 
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(4));
+        this.decreaseIndent();
+
+
+        this.writeAssembly(NEWLINE);
+
+        //set  dtor label %o0
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, label, "%o0");
+        this.decreaseIndent();
+
+        //set offset,  %o1
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, SET_OP, offset.getOffset(), "%o1");
+        this.decreaseIndent();
+
+        //add , base, %o1, %o1
+        this.increaseIndent();
+        this.writeAssembly(THREE_PARAM, ADD_OP, offset.getBase(),"%o1", "%o1");
+        this.decreaseIndent();
+
+        //st %o1 [%o0]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%o1","[%o0]");
+        this.decreaseIndent();
+       
+    }
+
+    public void DoDtorCall() {
+       int size = Dtors.size();
+
+       boolean global = true;
+
+       if(Dtors.isEmpty()) {
+          //ret
+          this.increaseIndent();
+          this.writeAssembly(NO_PARAM, RET_OP);
+          this.decreaseIndent();
+
+          //restore
+          this.increaseIndent();
+          this.writeAssembly(NO_PARAM, RESTORE_OP);
+          this.decreaseIndent();
+       }
+
+       if(Dtors.size() ==1 && Dtors.peek().getIsGlobal()) {
+                //ret
+                this.increaseIndent();
+                this.writeAssembly(NO_PARAM, RET_OP);
+                this.decreaseIndent();
+
+                //restore
+                this.increaseIndent();
+                this.writeAssembly(NO_PARAM, RESTORE_OP);
+                this.decreaseIndent(); 
+       }
+
+
+       while(!Dtors.isEmpty()) {
+          STO dtor = Dtors.pop();
+          int num = numDtors.pop();
+          String label = DOLLAR + "ctorDtor"+ "." + String.valueOf(num);
+          String first = dtor.getName().replace("~","");
+          String second = dtor.getName().replace("~","$");
+  
+          if(dtor.getIsGlobal()) {
+
+             this.writeAssembly(NO_PARAM, label+".fini:");
+
+             this.increaseIndent();
+             this.writeAssembly(THREE_PARAM,SAVE_OP ,"%sp","-96","%sp");
+             this.decreaseIndent();
+
+
+
+          }
+
+          //set  dtor label %o0
+          this.increaseIndent();
+          this.writeAssembly(TWO_PARAM, SET_OP, label, "%o0");
+          this.decreaseIndent();
+
+          //ld  [%o0] %o0
+          this.increaseIndent();
+          this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
+          this.decreaseIndent();
+
+          //cmp  %o0 %g0
+          this.increaseIndent();
+          this.writeAssembly(TWO_PARAM, CMP_OP, "%o0", "%g0");
+          this.decreaseIndent();
+
+          //be  label.fini.skip
+          this.increaseIndent();
+          this.writeAssembly(ONE_PARAM, BE_OP, label+".fini"+".skip");
+          this.decreaseIndent();
+
+          //nop
+          this.increaseIndent();
+          this.writeAssembly(NO_PARAM, NOP_OP);
+          this.decreaseIndent();
+
+          //call  dtor
+          this.increaseIndent();
+          this.writeAssembly(ONE_PARAM, CALL_OP, first+"."+second+"."+((FuncSTO)dtor).getAssemblyName());
+          this.decreaseIndent();
+
+          //nop
+          this.increaseIndent();
+          this.writeAssembly(NO_PARAM, NOP_OP);
+          this.decreaseIndent();
+
+          //set  dtor label %o0
+          this.increaseIndent();
+          this.writeAssembly(TWO_PARAM, SET_OP, label, "%o0");
+          this.decreaseIndent();
+
+          //st %o1 [%o0]
+          this.increaseIndent();
+          this.writeAssembly(TWO_PARAM, STORE_OP, "%g0","[%o0]");
+          this.decreaseIndent();
+
+          // label.fini.skip
+          this.writeAssembly(NO_PARAM, label+".fini"+".skip:");
+       
+           if(!(Dtors.isEmpty()) &&Dtors.peek().getIsGlobal() && global) {
+             //ret
+             this.increaseIndent();
+             this.writeAssembly(NO_PARAM, RET_OP);
+             this.decreaseIndent();
+
+             //restore
+             this.increaseIndent();
+             this.writeAssembly(NO_PARAM, RESTORE_OP);
+             this.decreaseIndent();
+             global = false;
+          
+          }
+          else if (Dtors.isEmpty() && !(dtor.getIsGlobal())) {
+             //ret
+             this.increaseIndent();
+             this.writeAssembly(NO_PARAM, RET_OP);
+             this.decreaseIndent();
+
+             //restore
+             this.increaseIndent();
+             this.writeAssembly(NO_PARAM, RESTORE_OP);
+             this.decreaseIndent();
+          
+          }
+
+          if(dtor.getIsGlobal()) {
+
+             //ret
+             this.increaseIndent();
+             this.writeAssembly(NO_PARAM, RET_OP);
+             this.decreaseIndent();
+
+             //restore
+             this.increaseIndent();
+             this.writeAssembly(NO_PARAM, RESTORE_OP);
+             this.decreaseIndent();
+
+             this.writeAssembly(NEWLINE);
+             // .section .fini
+             this.increaseIndent();
+             this.writeAssembly(ONE_PARAM, SECTION, "\".fini\"");
+             this.decreaseIndent();
+
+             // .align  4 
+             this.increaseIndent();
+             this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(4));
+             this.decreaseIndent();
+
+             //call  label.fini.skip
+             this.increaseIndent();
+             this.writeAssembly(ONE_PARAM, CALL_OP, label+".fini");
+             this.decreaseIndent();
+             
+             //nop
+             this.increaseIndent();
+             this.writeAssembly(NO_PARAM, NOP_OP);
+             this.decreaseIndent();
+
+             this.writeAssembly(NEWLINE);
+
+             // .section .text
+             this.increaseIndent();
+             this.writeAssembly(ONE_PARAM, SECTION, "\".text\"");
+             this.decreaseIndent();
+
+             // .align  4 
+             this.increaseIndent();
+             this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(4));
+             this.decreaseIndent();
+             
+          }
+
+       
+       }
+    
+    }
+
+    public void DoDtorParam() {
+        //st %i0 [%fp+68]
+        this.increaseIndent();
+        this.writeAssembly(TWO_PARAM, STORE_OP, "%i0","[%fp+68]");
+        this.decreaseIndent();
+    
     }
 
 }

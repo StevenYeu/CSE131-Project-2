@@ -67,6 +67,18 @@ class StructType extends CompositeType {
         return overloaded;
     }
 
+
+    public STO getDtor(String funcName) { 
+        for (int i =0; i < functions.size(); i++) {
+            if(functions.get(i) instanceof FuncSTO){
+                if (funcName.equals(functions.elementAt(i).getName())) {
+                    return functions.get(i);
+                }
+            }
+        }
+        return new ExprSTO("fun");
+    }
+
     public void OffStructTag(){
         if(functions.isEmpty()){
             return;

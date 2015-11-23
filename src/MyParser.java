@@ -556,6 +556,13 @@ class MyParser extends parser
                           offset.setBase("%fp");
                           codegen.DoStructArray(result,offset,i);
                           codegen.DoCtor(offset, fun);
+                          // dto stuff
+                          STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
+                          dtor = new FuncSTO(dtor.getName(),dtor.getType());
+                          if(m_symtab.getLevel() == 1) {
+                             dtor.setIsGlobal(true);
+                          }
+                          codegen.DoDtorHeader(dtor,result);
 
 
                         }
@@ -601,6 +608,13 @@ class MyParser extends parser
                       result.setAssemblyName(((FuncSTO)fun).getAssemblyName());
 
                       codegen.DoCtor(result, fun);
+                      // dtor stuff regular for no param case
+                      STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
+                      dtor = new FuncSTO(dtor.getName(),dtor.getType());
+                      if(m_symtab.getLevel() == 1) {
+                        dtor.setIsGlobal(true);
+                      }
+                      codegen.DoDtorHeader(dtor,result);
 
                       if(m_symtab.getLevel() == 1){
 
@@ -663,6 +677,14 @@ class MyParser extends parser
                        codegen.DoStructArray(result,offset,i);
                        codegen.DoCtorThis(result);
                        offsetCnt = codegen.DoFuncCallParam(offset, fun, params, offsetCnt);
+                       // dtor stuff for param array case
+                       STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
+                       dtor = new FuncSTO(dtor.getName(),dtor.getType());
+                       if(m_symtab.getLevel() == 1) {
+                          dtor.setIsGlobal(true);
+                       }
+                       codegen.DoDtorHeader(dtor,result);
+
 
 
                      }
@@ -711,6 +733,15 @@ class MyParser extends parser
                   result.setStructName(fun.getStructName());
                   codegen.DoCtorThis(result);
                   offsetCnt = codegen.DoFuncCallParam(result, fun, params, offsetCnt);
+                  
+                  // dtor stuff for regular param case
+                  STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
+                  dtor = new FuncSTO(dtor.getName(),dtor.getType());
+                  if(m_symtab.getLevel() == 1) {
+                     dtor.setIsGlobal(true);
+                  }
+
+                  codegen.DoDtorHeader(dtor,result);
                
                   if(m_symtab.getLevel() == 1){
                       //a sto for this init func, does nothing except holds offset and base
@@ -730,8 +761,8 @@ class MyParser extends parser
                  result.setIsModifiable(true);
                  
                   
-                  m_symtab.insert(result);
-                  return;
+                 m_symtab.insert(result);
+                 return;
               }
           }
        }
@@ -773,11 +804,29 @@ class MyParser extends parser
                  if(params.isEmpty()){
                      STO antifun = this.getSomeFunc();
                      codegen.DoCtor(offset, antifun);
+                     // dtor stuff for overload, array case no param
+                     STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
+                     dtor = new FuncSTO(dtor.getName(),dtor.getType());
+                     if(m_symtab.getLevel() == 1) {
+                         dtor.setIsGlobal(true);
+                     }
+                     codegen.DoDtorHeader(dtor,offset);
+
                  }
                  else{
                      codegen.DoCtorThis(result);
                      STO antifun = this.getSomeFunc();
                      offsetCnt = codegen.DoFuncCallParam(result, antifun, params, offsetCnt);
+                     
+                     // dtor stuff  overload case , array, params
+                     STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
+                     dtor = new FuncSTO(dtor.getName(),dtor.getType());
+                     if(m_symtab.getLevel() == 1) {
+                        dtor.setIsGlobal(true);
+                     }
+
+                     codegen.DoDtorHeader(dtor,result);
+
                  }
 
 
@@ -831,11 +880,31 @@ class MyParser extends parser
                   
                   result.setAssemblyName("void");
                   codegen.DoCtor(result, result);
+
+                  // dtor stuff for reg overload no params
+                  STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
+                  dtor = new FuncSTO(dtor.getName(),dtor.getType());
+                  if(m_symtab.getLevel() == 1) {
+                     dtor.setIsGlobal(true);
+                  }
+
+                  codegen.DoDtorHeader(dtor,result);
+
               }
               else{
                   codegen.DoCtorThis(result);
                   STO antifun = this.getSomeFunc();
                   offsetCnt = codegen.DoFuncCallParam(result, antifun, params, offsetCnt);
+                  
+                  // dot stuff for reg overload params
+                  STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
+                  dtor = new FuncSTO(dtor.getName(),dtor.getType());
+                  if(m_symtab.getLevel() == 1) {
+                     dtor.setIsGlobal(true);
+                  }
+
+                  codegen.DoDtorHeader(dtor,result);
+
               }
               if(m_symtab.getLevel() == 1){
 
@@ -1797,8 +1866,11 @@ class MyParser extends parser
                 
             }
         }
-			
-		FuncSTO sto = new FuncSTO(id,new StructType(id));
+        String typeid = id;
+        if(id.contains("~")) {
+            typeid = id.substring(1);
+        }
+		FuncSTO sto = new FuncSTO(id,new StructType(typeid));
         sto.setReturnType(new VoidType("void",0));
         sto.setOTag(true);
 		   m_symtab.insert(sto);
@@ -1807,6 +1879,11 @@ class MyParser extends parser
 		m_symtab.openScope();
 
 		m_symtab.setFunc(sto);
+
+        if(id.contains("~")) {
+           codegen.DoFuncStart(sto,"%g1",typeid);
+           codegen.DoDtorParam();
+        }
     
 	}
 
