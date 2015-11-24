@@ -13,6 +13,7 @@ class FuncSTO extends STO
     boolean isStruct = false;
     boolean tag = false;
     boolean isOver = false; // if func is Overloaded
+    boolean isExtern = false;
 
 	//----------------------------------------------------------------
 	//
@@ -88,7 +89,16 @@ class FuncSTO extends STO
        isStruct = b;
     }
 
+    public boolean getIsExtern() {
+       return isExtern;
+    }
+
+    public void setIsExtern(boolean b) {
+       isExtern = b;
+    }
+
     public String getAssemblyName() {
+        if(isExtern) {return "";}
         if(params.isEmpty()) {return "void";}
         String name = "";
         for(int i =0; i < params.size();i++) {

@@ -239,7 +239,7 @@ GlobalDecl ::=      ExternDecl
 
 ExternDecl ::=      T_EXTERN DecoratedBasicType:_2 T_ID:_3 OptArrayList:_4
                     {:
-                        ((MyParser) parser).DoExternDecl (_3,_2); // Changed
+                        ((MyParser) parser).DoExternDecl (_3,_2,(Vector<STO>)_4); // Done
                     :}
                     T_SEMI
     ;
@@ -412,8 +412,8 @@ FuncDecl ::=        T_EXTERN T_FUNCTION T_COLON ReturnType:_1 T_ID:_3
                     :}
                     T_LPAREN OptParamList:_4 T_RPAREN
                     {:
-                        ((MyParser) parser).DoFormalParams(_4);
-                        ((MyParser) parser).DoFuncDecl_2();
+                        ((MyParser) parser).DoFormalParamsExtern(_4);
+                        ((MyParser) parser).DoFuncDeclExtern();
                     :}
                     T_SEMI
     ;

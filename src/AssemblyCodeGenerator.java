@@ -3772,6 +3772,9 @@ public class AssemblyCodeGenerator {
         if(sto.getStructTag()){
             this.writeAssembly(ONE_PARAM, CALL_OP, sto.getStructName()+"."+sto.getName()+"."+((FuncSTO)sto).getAssemblyName()); 
         }
+        else if (((FuncSTO)sto).getIsExtern()) {
+            this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName());
+        }
         else{
             this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)sto).getAssemblyName()); 
         }
@@ -3805,9 +3808,13 @@ public class AssemblyCodeGenerator {
         if(func.getStructTag()){
             this.writeAssembly(ONE_PARAM, CALL_OP, func.getStructName()+"."+sto.getName()+"."+((FuncSTO)func).getAssemblyName()); 
         }
+        else if (((FuncSTO)func).getIsExtern()) {
+            this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName());
+        }
         else{
             this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)func).getAssemblyName());
         }
+
         this.decreaseIndent();
 
         // nop
@@ -4031,6 +4038,9 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         if(!(func.getStructTag())) {
            this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)func).getAssemblyName()); 
+        }
+        else if (((FuncSTO)func).getIsExtern()) {
+            this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName());
         }
         else { // note change --11/17
            this.writeAssembly(ONE_PARAM, CALL_OP, func.getStructName()+"."+func.getName()+"."+func.getAssemblyName()); 

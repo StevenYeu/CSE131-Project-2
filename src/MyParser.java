@@ -1714,15 +1714,89 @@ class MyParser extends parser
 	//----------------------------------------------------------------
 	//
 	//----------------------------------------------------------------
-	void DoExternDecl(String id, Type t)
+	void DoExternDecl(String id, Type t, Vector<STO> arraylist)
 	{
+        int numDim = arraylist.size();
+        VarSTO sto;
+
 		if (m_symtab.accessLocal(id) != null)
 		{
 			m_nNumErrors++;
 			m_errors.print(Formatter.toString(ErrorMsg.redeclared_id, id));
 		}
 
-		VarSTO sto = new VarSTO(id, t);
+        // var decl for array  
+        if(numDim > 0)
+        {
+
+            STO sizeStoTop = arraylist.elementAt(0);
+            String arr = this.CreateArray(arraylist);
+            ArrayType aTopType = new ArrayType(t.getName() + arr, ((ConstSTO)sizeStoTop).getIntValue(), numDim,((ConstSTO)sizeStoTop).getIntValue());
+
+            sto = new VarSTO(id, aTopType);
+
+            // Assembly Write: array decl in Global scope    
+            if(m_symtab.getLevel() == 1){
+                sto.setBase("%g0");
+                sto.setOffset(id);
+            }
+            // local scope
+            else{
+                // set base and offset
+                offsetCnt = offsetCnt + ((ArrayType)sto.getType()).getTotalSize()/4;
+                sto.setBase("%fp");
+                sto.setOffset(String.valueOf(offsetCnt * -4));
+                
+            }          
+            // non-mod l-val for array
+            sto.setIsAddressable(true);
+            sto.setIsModifiable(false);
+        }
+        else {
+            // var decl for pointer 
+            if(t instanceof PointerType){
+                                
+                sto = new VarSTO(id,t);
+                //Global init case
+                if(m_symtab.getLevel() == 1){
+                    sto.setBase("%g0");
+                    sto.setOffset(id);
+                 
+                }
+                // local init case
+                else{
+                    //set base and offset
+                    sto.setBase("%fp");
+                    sto.setOffset(String.valueOf(++offsetCnt * -4));
+                }
+
+                //lval for pointer
+                sto.setIsAddressable(true);
+                sto.setIsModifiable(true);
+  
+            }
+            //var decl for regular case
+            else{            
+
+                sto = new VarSTO(id,t);
+
+                // case in global
+                if(m_symtab.getLevel() == 1){
+                    //set base and offset
+                    sto.setBase("%g0");
+                    sto.setOffset(id);
+                }
+                // case in local
+                else{
+                    //set base and offset                    
+                    sto.setBase("%fp");
+                    sto.setOffset(String.valueOf(++offsetCnt * -4));
+
+                }
+                sto.setIsAddressable(true);
+                sto.setIsModifiable(true);              
+            }
+        }
 		m_symtab.insert(sto);
 	}
 
@@ -2193,12 +2267,14 @@ class MyParser extends parser
 	
 		FuncSTO sto = new FuncSTO(id,t);
 	    sto.setReturnType(t);
-        sto.setOTag(true); // tag to exclude self from overload check
+        sto.setIsExtern(true);
+
         m_symtab.insert(sto);
         m_symtab.addFunc(sto);
         
 		m_symtab.openScope();
-		m_symtab.setFunc(sto);
+		m_symtab.setFunc(sto); 
+
 	}
 
 
@@ -2277,6 +2353,27 @@ class MyParser extends parser
 	}
 
 
+	//----------------------------------------------------------------
+	//
+	//----------------------------------------------------------------
+	void DoFuncDeclExtern()
+	{
+
+		//WRITE ASSEMBLY:
+        // the end of the function
+        FuncSTO fun = m_symtab.getFunc();
+
+        int val = offsetCnt * 4;
+        fun.setOffset(" + " + String.valueOf(val));
+
+        fun.setBase("92");
+
+        offsetCnt = 0;     //reset counter after each init 
+        
+        m_symtab.closeScope();
+
+		m_symtab.setFunc(null);
+	}
 
 
 	//----------------------------------------------------------------
@@ -2304,7 +2401,7 @@ class MyParser extends parser
         else{
             codegen.DoFuncEnd(fun, null);
             codegen.DoDtorLocalCall();
-            System.out.println(m_symtab.getFunc().getName());
+
             if(m_symtab.getFunc().getName().equals("main")) {
                 codegen.DoDtorCallGlobal();
             }
@@ -2320,6 +2417,35 @@ class MyParser extends parser
 
 		m_symtab.setFunc(null);
 	}
+
+	void DoFormalParamsExtern(Vector<String> params)
+	{
+        int paramCnt = 0;
+		
+        if (m_symtab.getFunc() == null)
+		{
+			m_nNumErrors++;
+			m_errors.print ("internal: DoFormalParams says no proc!");
+		}
+
+		// insert parameters here
+        FuncSTO sto = m_symtab.getFunc();
+
+        for(int i = 0; i < params.size(); i++){
+
+            STO par = this.ProcessParams(params.get(i));
+
+            //Write Assembly: add base and offset to params
+            par.setOffset(String.valueOf(68+paramCnt*4));
+            paramCnt++;
+            par.setBase("%fp");
+
+
+            sto.addParam(par);
+            m_symtab.insert(par);
+        }
+        
+    }
 
 	//----------------------------------------------------------------
 	//
@@ -2356,6 +2482,8 @@ class MyParser extends parser
             sto.addParam(par);
             m_symtab.insert(par);
         }
+
+
 
         //WRITE ASSEMBLY
         //the start of the function
