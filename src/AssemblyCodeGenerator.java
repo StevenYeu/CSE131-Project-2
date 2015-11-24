@@ -231,7 +231,41 @@ public class AssemblyCodeGenerator {
     private static final String WORD = ".word";
     private static final String SINGLE = ".single";
     private static final String INIT = ".$.init.";
+   
+
+    // regs
+      //local reg
+    private static final String l0 = "%l0";
+    private static final String l1 = "%l1";
+    private static final String l2 = "%l2";
+    private static final String l3 = "%l3";
+    private static final String l4 = "%l4";
+    private static final String l5 = "%l5";
+    private static final String l6 = "%l6";
+    private static final String l7 = "%l7";
+      // output reg
+    private static final String o0 = "%o0";
+    private static final String o1 = "%o1";
+    private static final String o2 = "%o2";
+    private static final String o3 = "%o3";
+    private static final String o4 = "%o4";
+    private static final String o5 = "%o5";
     
+     // input reg
+    private static final String i0 = "%i0";
+    private static final String i1 = "%i1";
+    private static final String i2 = "%i2";
+    private static final String i3 = "%i3";
+    private static final String i4 = "%i4";
+    private static final String i5 = "%i5";
+    
+     // global reg
+    private static final String g0 = "%g0";
+    
+     // float reg
+    private static final String f0 = "%f0";
+    private static final String f1 = "%f1";
+
 
 
 
@@ -401,7 +435,7 @@ public class AssemblyCodeGenerator {
         
         // .asciz "Index error msg"
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, AZ, "\"INdex value of %d is outside legel range [0,%d].\\n\"");
+        this.writeAssembly(ONE_PARAM, AZ, "\"Index value of %d is outside legal range [0,%d).\\n\"");
         this.decreaseIndent();
 
         // .$$.strNullPtr:
@@ -1278,63 +1312,69 @@ public class AssemblyCodeGenerator {
            this.decreaseIndent();
         }
 
-        // set    expr offset, %o1  
-        this.increaseIndent();
-        this.writeAssembly(TWO_PARAM, SET_OP, expr.getOffset(), "%l7");
-        this.decreaseIndent();
 
-        // add    expr base, %l7, %l7  
-        this.increaseIndent();
-        this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(), "%l7", "%l7");
-        this.decreaseIndent();
-
-
-        // check for pointer, array
-        if(expr.getArrayTag() || expr.getIsPointer() || expr.flag){
-             this.increaseIndent();
-             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
-             this.decreaseIndent();
-        }
-
-        //float to float
-        if(expr.getType() instanceof FloatType){
-
-            // ld   [%l7], %f0
+        if(expr.getType() instanceof NullPointerType){
             this.increaseIndent();
-            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%f0");
+            this.writeAssembly(TWO_PARAM, SET_OP, "0", o0);
             this.decreaseIndent();
 
-
-            // st   %f0, [%o1]
-            this.increaseIndent();
-            this.writeAssembly(TWO_PARAM, STORE_OP, "%f0", "[%o1]");
-            this.decreaseIndent();
-
+            this.store(o0,o1);
         }
+
         else{
-            // ld   [%l7], %o0
-            this.increaseIndent();
-            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o0");
-            this.decreaseIndent();
+            this.getVar(expr, l7);
+        
+             // check for pointer, array
+             if(expr.getArrayTag() || expr.getIsPointer() || expr.flag){
+                 this.increaseIndent();
+                 this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
+                 this.decreaseIndent();
+             }
 
-            // int to float, type promote
-            if(promote != null){
-                this.DoTypePromotion(promote, "%f0", "%o0");
 
-                //st   %f0, [%o1]
+             //float to float
+            if(expr.getType() instanceof FloatType){
+
+                // ld   [%l7], %f0
+                this.increaseIndent();
+                this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%f0");
+                this.decreaseIndent();
+
+
+                // st   %f0, [%o1]
                 this.increaseIndent();
                 this.writeAssembly(TWO_PARAM, STORE_OP, "%f0", "[%o1]");
                 this.decreaseIndent();
 
-            }
-            else{
-                // st   %o0, [%o1]
-                this.increaseIndent();
-                this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
-                this.decreaseIndent();
-            }
+           }
+           else{
+               // ld   [%l7], %o0
+               this.increaseIndent();
+               this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%o0");
+               this.decreaseIndent();
+
+                // int to float, type promote
+                if(promote != null){
+                    this.DoTypePromotion(promote, "%f0", "%o0");
+
+                    //st   %f0, [%o1]
+                    this.increaseIndent();
+                    this.writeAssembly(TWO_PARAM, STORE_OP, "%f0", "[%o1]");
+                    this.decreaseIndent();
+
+               }
+               else{
+                   // st   %o0, [%o1]
+                   this.increaseIndent();
+                   this.writeAssembly(TWO_PARAM, STORE_OP, "%o0", "[%o1]");
+                   this.decreaseIndent();
+               }
+
+           }
+
 
         }
+
 
 
 
@@ -1706,18 +1746,9 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, a.getBase(), "%o0", "%o0");
         this.decreaseIndent();
 
-         // call  struct name xxx
-        //this.increaseIndent();
-        //this.writeAssembly(ONE_PARAM, CALL_OP, a.getStructName()+"."+a.getName()+"."+a.getAssemblyName());
-        //this.decreaseIndent();
-
-        // nop
-        //this.increaseIndent();
-       // this.writeAssembly(NO_PARAM, NOP_OP);
-       // this.decreaseIndent();
-
-
-
+        if(a.getIsPointer()){
+            this.load(o0, o0);
+        }
         // set  b.offset, %o0
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, SET_OP, b.getOffset(), "%o1");
@@ -1728,10 +1759,15 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, b.getBase(), "%o1", "%o1");
         this.decreaseIndent();
 
+        if(b.getIsPointer()){
+            this.load(o1, o1);
+        }
+
         //set struct size %o2
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(a.getType().getSize()), "%o2"); 
         this.decreaseIndent();
+
 
         //call memmove
         this.increaseIndent();
@@ -3968,7 +4004,7 @@ public class AssemblyCodeGenerator {
                        this.decreaseIndent();
 
                        // ld [%l7] %l7 ---- there is one case that's been needed 11/17 for array and ref
-                       if(value.getArrayTag() || value.flag){
+                       if(value.getArrayTag() || value.flag || value.getIsPointer()){
                            this.increaseIndent();
                            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
                            this.decreaseIndent();
@@ -4269,12 +4305,15 @@ public class AssemblyCodeGenerator {
            this.increaseIndent();
            if(expr.getType() instanceof FloatType) {
                // float case
+              if(expr.flag) {
+                     this.load(reg,reg);
+              }
               this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", "%f0"); 
            }
            else {
               // Type Promotion int to float
               if(promote != null){
-                  this.writeAssembly(TWO_PARAM, LOAD_OP, "[%f0]", "%i0"); 
+                  this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%i0"); 
                 
                   this.decreaseIndent();
                   this.DoTypePromotion(promote, "%f0", "%i0");
@@ -4282,6 +4321,9 @@ public class AssemblyCodeGenerator {
               }
               else{
                   // non float case
+                  if(expr.flag) {
+                     this.load(reg,reg);
+                  }
                   this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", "%i0");
               }
            }
@@ -4875,6 +4917,235 @@ public class AssemblyCodeGenerator {
           this.writeAssembly(NO_PARAM, RESTORE_OP);
           this.decreaseIndent();
     }
+
+    public void DoTypeCast(STO casted, Type cast, STO offset, STO promote) {
+
+        if(casted.getType() instanceof FloatType && cast instanceof IntType) {
+           this.DoIntToFloat(casted,cast,offset);
+        }
+        else if(casted.getType() instanceof BoolType && cast instanceof IntType) {
+            this.DoIntAndBool(casted,cast,offset);
+        }
+        else if(casted.getType() instanceof IntType && cast instanceof BoolType){
+            this.DoIntAndBool(casted,cast,offset);
+        }
+        else if (casted.getType() instanceof FloatType && cast instanceof BoolType) {
+            this.DoBoolToFloat(casted,cast,offset,promote);
+        }
+        else if(casted.getType() instanceof BoolType && cast instanceof FloatType) {
+           this.DoFloatToBool(casted,cast,offset,promote);
+        }
+        else if(casted.getType() instanceof IntType && cast instanceof FloatType) {
+           this.DoFloatToInt(casted,cast,offset,promote);
+        }
+        else {
+            this.DoSameAndPointer(casted,cast,offset);
+        
+        }
+
+
+    
+    }
+
+    public void DoIntToFloat(STO casted,Type cast, STO offset) {
+       
+       this.writeAssembly(NEWLINE);
+        // ! comment
+       this.increaseIndent();
+       this.writeAssembly(NO_PARAM, "! ( "+cast.getName() + " )" +casted.getName());
+       this.decreaseIndent();
+
+       // does set add
+       this.getVar(casted,l7);
+       this.load(l7,f0);
+       this.fstoi(f0);
+       // does set add
+       this.getVar(offset,o1);
+       this.store(f0,o1);
+
+    }
+
+    public void DoFloatToInt(STO casted,Type cast,STO Offset,STO promote) {
+
+        this.writeAssembly(NEWLINE);
+        
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! ( "+cast.getName() + " )" +casted.getName());
+        this.decreaseIndent();
+        
+        this.getVar(casted,l7);
+        this.load(l7,o0);
+        this.getVar(promote,l7);
+        this.store(o0,l7);
+        this.load(l7,f0);
+        this.fitos(f0);
+        this.getVar(Offset,o1);
+        this.store(f0,o1);
+
+    }
+
+    public void DoIntAndBool(STO casted,Type cast,STO offset) {
+        
+        String label = DOLLAR+"cmp."+String.valueOf(++cmpCnt);
+        this.writeAssembly(NEWLINE);
+        
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! ( "+cast.getName() + " )" +casted.getName());
+        this.decreaseIndent();
+
+        this.getVar(casted,l7);
+        this.load(l7,o0);
+        this.compare(CMP_OP,o0,g0);
+        this.branch(BE_OP,label);
+        this.move(g0,o0);
+        this.move(String.valueOf(1),o0);
+        this.label(label+":");
+        this.getVar(offset,o1);
+        this.store(o0,o1); 
+    
+    }
+
+    public void DoBoolToFloat(STO casted,Type cast,STO offset,STO promote) {
+
+        String label = DOLLAR+"cmp."+String.valueOf(++cmpCnt);
+        this.writeAssembly(NEWLINE);
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! ( "+cast.getName() + " )" +casted.getName());
+        this.decreaseIndent();
+
+        this.getVar(casted,l7);
+        this.load(l7,f0);
+        this.getVar(promote,l7);
+        this.store(g0,l7);
+        this.load(l7,f1);
+        this.fitos(f1);
+        this.compare(FCMP_OP,f0,f1);
+        this.nop();
+        this.branch(FBE_OP,label);
+        this.move(g0,o0);
+        this.move(String.valueOf(1),o0);
+        this.label(label+":");
+        this.getVar(offset,o1);
+        this.store(o0,o1);
+
+    
+    }
+
+
+    public void DoFloatToBool(STO casted,Type cast,STO offset, STO promote) {
+        String label = DOLLAR+"cmp."+String.valueOf(++cmpCnt);
+        this.writeAssembly(NEWLINE);
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! ( "+cast.getName() + " )" +casted.getName());
+        this.decreaseIndent();
+
+        this.getVar(casted,l7);
+        this.load(l7,o0);
+        this.compare(CMP_OP,o0,g0);
+        this.branch(BE_OP,label);
+        this.move(g0,o0);
+        this.move(String.valueOf(1),o0);
+        this.label(label+":");
+        this.getVar(promote,l7);
+        this.store(o0,l7);
+        this.load(l7,f0);
+        this.fitos(f0);
+        this.getVar(offset,o1);
+        this.store(f0,o1);
+    }
+
+    public void DoSameAndPointer(STO casted,Type cast,STO offset) {
+        this.writeAssembly(NEWLINE);
+        // ! comment
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, "! ( "+cast.getName() + " )" +casted.getName());
+        this.decreaseIndent();
+
+        this.getVar(casted,l7);
+        this.load(l7,o0);
+        this.getVar(offset,o1);
+        this.store(o0,o1);
+
+         
+    }
+
+
+    public void getVar( STO sto, String reg ) {
+       this.increaseIndent();
+       this.writeAssembly(TWO_PARAM,SET_OP,sto.getOffset(),reg);
+       this.decreaseIndent();
+
+       this.increaseIndent();
+       this.writeAssembly(THREE_PARAM,ADD_OP,sto.getBase(),reg,reg);
+       this.decreaseIndent();
+    
+    }
+
+    public void store(String reg1, String reg2) {
+       this.increaseIndent();
+       this.writeAssembly(TWO_PARAM,STORE_OP,reg1,"["+reg2+"]");
+       this.decreaseIndent();
+    
+    }
+
+    public void load(String reg1, String reg2) {
+       this.increaseIndent();
+       this.writeAssembly(TWO_PARAM,LOAD_OP ,"["+reg1+"]",reg2);
+       this.decreaseIndent();
+
+    }
+
+    public void fstoi(String reg) {
+       this.increaseIndent();
+       this.writeAssembly(TWO_PARAM,FSTOI_OP, reg, reg);
+       this.decreaseIndent();
+
+    }
+
+    public void fitos(String reg) {
+       this.increaseIndent();
+       this.writeAssembly(TWO_PARAM,FITOS_OP, reg, reg);
+       this.decreaseIndent();
+
+    }
+
+    public void compare(String cmp, String reg1, String reg2) {
+
+       //cmp  reg1 reg2
+       this.increaseIndent();
+       this.writeAssembly(TWO_PARAM, cmp, reg1, reg2);
+       this.decreaseIndent(); 
+    }
+
+
+    public void branch(String bran, String label) {
+       //branch  label
+       this.increaseIndent();
+       this.writeAssembly(ONE_PARAM, bran, label);
+       this.decreaseIndent();
+    }
+
+    public void move(String val, String reg) {
+       this.increaseIndent();
+       this.writeAssembly(TWO_PARAM, MOV_OP, val,reg);
+       this.decreaseIndent();
+    }
+
+    public void label(String label) {
+        this.writeAssembly(NO_PARAM, label);
+    }
+
+    public void nop() {
+        //nop
+        this.increaseIndent();
+        this.writeAssembly(NO_PARAM, NOP_OP);
+        this.decreaseIndent();
+    }
+
 
 }
 

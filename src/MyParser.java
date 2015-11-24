@@ -1669,7 +1669,7 @@ class MyParser extends parser
         theFuture.setBase("%fp");
         theFuture.setOffset(String.valueOf(++offsetCnt * -4));
         codegen.DoForEach(expr, sto, s, theFuture);
-        System.out.println("ID:" + id);
+      
 		m_symtab.insert(sto);
 
         if (!(expr.getType() instanceof ArrayType)){
@@ -3499,7 +3499,7 @@ class MyParser extends parser
         //change accesslocal to access might break things
         if (isInStruct) {
         	if ((sto = m_symtab.accessLocal(strID)) == null ) {	
-                System.out.println("STER: " + strID);
+           
         	    if((sto = m_symtab.accessGlobal(strID)) == null){    
         	       m_nNumErrors++;
         	       m_errors.print(Formatter.toString(ErrorMsg.undeclared_id, strID));
@@ -3512,8 +3512,7 @@ class MyParser extends parser
         }
         else {
         	if ((sto = m_symtab.access(strID)) == null ) {
-                
-                System.out.println("DES3:" + strID);
+                 
         	    m_nNumErrors++;
         	    m_errors.print(Formatter.toString(ErrorMsg.undeclared_id, strID));
         	    sto = new ErrorSTO(strID);
@@ -4574,6 +4573,8 @@ class MyParser extends parser
         result.setOffset(String.valueOf(++offsetCnt * -4));
         result.setBase("%fp");
         codegen.DoDereference(sto, result);
+        result.flag = sto.flag;
+        result.setArrayTag(sto.getArrayTag());
         return result;
     }
 
@@ -4843,22 +4844,28 @@ class MyParser extends parser
 
         }
 
+        codegen.setholdOff(true);
+
         if(sto.getType() instanceof BasicType || sto.getType() instanceof PointerType){
 
             STO res = new ConstSTO("temp");
             if(sto instanceof ConstSTO){
 
                 Type typ = sto.getType();
+                // Cast float/int to Bool
                 if( typ instanceof BoolType && t instanceof NumericType){
                     int val=0;
                     if(((ConstSTO)sto).getBoolValue()){val = 1;}
                     else if (!(((ConstSTO)sto).getBoolValue())) {val = 0;}
                     res = new ConstSTO(sto.getName(), t, val);
+                    
                 }
+                // Cast Bool to Int
                else if(typ instanceof IntType && t instanceof BoolType){
                     
                     res = new ConstSTO(sto.getName(), t, ((ConstSTO)sto).getIntValue());
                }
+               // Cast Bool to float
                else if(typ instanceof FloatType && t instanceof BoolType){
                     if(((ConstSTO)sto).getFloatValue() == 0.0)
                         res = new ConstSTO(sto.getName(), t, 0.0);
@@ -4866,12 +4873,14 @@ class MyParser extends parser
                         res = new ConstSTO(sto.getName(), t, 1.0);
    
                }
+               // Cast int to float
                else if(typ instanceof FloatType && t instanceof IntType){
                     float val = ((ConstSTO)sto).getFloatValue();
                     int intVal = (int)val;
                     res = new ConstSTO(sto.getName(), t,intVal);
                
                }
+               // float to int
                else if(typ instanceof IntType && t instanceof FloatType){
                     float val = ((ConstSTO)sto).getFloatValue();
                     //float floatVal = (float)val;
@@ -4884,8 +4893,25 @@ class MyParser extends parser
             }
             else{
                 res = new ExprSTO(sto.getName(), t);
+
                 
             }
+            res.setOffset(String.valueOf(++offsetCnt  * -4));
+            res.setBase("%fp");
+
+            if( (t instanceof FloatType) && (sto.getType() instanceof IntType || sto.getType() instanceof BoolType)
+                 || (t instanceof BoolType && sto.getType() instanceof FloatType)   ) {
+                STO promote = new ExprSTO("promote");
+                promote.setOffset(String.valueOf(++offsetCnt * -4));
+                promote.setBase("%fp");
+                codegen.DoTypeCast(sto,t,res,promote);
+
+            }
+            else {
+                codegen.DoTypeCast(sto,t,res,null);
+            }
+
+
             res.setIsAddressable(false);
             res.setIsModifiable(false);
             return res;
