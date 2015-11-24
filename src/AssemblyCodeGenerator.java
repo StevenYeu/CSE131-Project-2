@@ -4036,11 +4036,11 @@ public class AssemblyCodeGenerator {
 
         //call foo.param
         this.increaseIndent();
-        if(!(func.getStructTag())) {
-           this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)func).getAssemblyName()); 
-        }
-        else if (((FuncSTO)func).getIsExtern()) {
+        if (((FuncSTO)func).getIsExtern()) {
             this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName());
+        }
+        else if(!(func.getStructTag())) {
+           this.writeAssembly(ONE_PARAM, CALL_OP, sto.getName()+"."+((FuncSTO)func).getAssemblyName()); 
         }
         else { // note change --11/17
            this.writeAssembly(ONE_PARAM, CALL_OP, func.getStructName()+"."+func.getName()+"."+func.getAssemblyName()); 

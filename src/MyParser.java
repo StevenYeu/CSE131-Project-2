@@ -1669,6 +1669,7 @@ class MyParser extends parser
         theFuture.setBase("%fp");
         theFuture.setOffset(String.valueOf(++offsetCnt * -4));
         codegen.DoForEach(expr, sto, s, theFuture);
+        System.out.println("ID:" + id);
 		m_symtab.insert(sto);
 
         if (!(expr.getType() instanceof ArrayType)){
@@ -3498,6 +3499,7 @@ class MyParser extends parser
         //change accesslocal to access might break things
         if (isInStruct) {
         	if ((sto = m_symtab.accessLocal(strID)) == null ) {	
+                System.out.println("STER: " + strID);
         	    if((sto = m_symtab.accessGlobal(strID)) == null){    
         	       m_nNumErrors++;
         	       m_errors.print(Formatter.toString(ErrorMsg.undeclared_id, strID));
@@ -3509,7 +3511,9 @@ class MyParser extends parser
 
         }
         else {
-        	if ((sto = m_symtab.access(strID)) == null ) {	
+        	if ((sto = m_symtab.access(strID)) == null ) {
+                
+                System.out.println("DES3:" + strID);
         	    m_nNumErrors++;
         	    m_errors.print(Formatter.toString(ErrorMsg.undeclared_id, strID));
         	    sto = new ErrorSTO(strID);
@@ -3548,9 +3552,8 @@ class MyParser extends parser
 		if (m_symtab.accessGlobal(strID) == null)
 		{
 
-            if(!strID.equals(StructName)){
-                 
-			    m_nNumErrors++;
+            if(!strID.equals(StructName)){ 
+			    m_nNumErrors++; 
 		 	    m_errors.print(Formatter.toString(ErrorMsg.undeclared_id, strID));
 			    return new ErrorType();
             }
