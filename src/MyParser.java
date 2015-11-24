@@ -637,7 +637,7 @@ class MyParser extends parser
                           // dto stuff
                           STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
                           dtor = new FuncSTO(dtor.getName(),dtor.getType());
-                          if(m_symtab.getLevel() == 1) {
+                          if(m_symtab.getLevel() == 1 || optstatic != null) {
                              dtor.setIsGlobal(true);
                           }
                           codegen.DoDtorHeader(dtor,result);
@@ -706,7 +706,7 @@ class MyParser extends parser
                       // dtor stuff regular for no param case
                       STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
                       dtor = new FuncSTO(dtor.getName(),dtor.getType());
-                      if(m_symtab.getLevel() == 1) {
+                      if(m_symtab.getLevel() == 1 || optstatic != null) {
                         dtor.setIsGlobal(true);
                       }
                       codegen.DoDtorHeader(dtor,result);
@@ -794,7 +794,7 @@ class MyParser extends parser
                        // dtor stuff for param array case
                        STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
                        dtor = new FuncSTO(dtor.getName(),dtor.getType());
-                       if(m_symtab.getLevel() == 1) {
+                       if(m_symtab.getLevel() == 1 || optstatic != null) {
                           dtor.setIsGlobal(true);
                        }
                        codegen.DoDtorHeader(dtor,result);
@@ -866,7 +866,7 @@ class MyParser extends parser
                   // dtor stuff for regular param case
                   STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
                   dtor = new FuncSTO(dtor.getName(),dtor.getType());
-                  if(m_symtab.getLevel() == 1) {
+                  if(m_symtab.getLevel() == 1 || optstatic != null) {
                      dtor.setIsGlobal(true);
                   }
 
@@ -952,7 +952,7 @@ class MyParser extends parser
                      // dtor stuff for overload, array case no param
                      STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
                      dtor = new FuncSTO(dtor.getName(),dtor.getType());
-                     if(m_symtab.getLevel() == 1) {
+                     if(m_symtab.getLevel() == 1 || optstatic != null) {
                          dtor.setIsGlobal(true);
                      }
                      codegen.DoDtorHeader(dtor,offset);
@@ -967,7 +967,7 @@ class MyParser extends parser
                      // dtor stuff  overload case , array, params
                      STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
                      dtor = new FuncSTO(dtor.getName(),dtor.getType());
-                     if(m_symtab.getLevel() == 1) {
+                     if(m_symtab.getLevel() == 1 || optstatic != null) {
                         dtor.setIsGlobal(true);
                      }
 
@@ -1046,7 +1046,7 @@ class MyParser extends parser
                   // dtor stuff for reg overload no params
                   STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
                   dtor = new FuncSTO(dtor.getName(),dtor.getType());
-                  if(m_symtab.getLevel() == 1) {
+                  if(m_symtab.getLevel() == 1 || optstatic  != null) {
                      dtor.setIsGlobal(true);
                   }
 
@@ -1062,7 +1062,7 @@ class MyParser extends parser
                   // dot stuff for reg overload params
                   STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
                   dtor = new FuncSTO(dtor.getName(),dtor.getType());
-                  if(m_symtab.getLevel() == 1) {
+                  if(m_symtab.getLevel() == 1 || optstatic != null) {
                      dtor.setIsGlobal(true);
                   }
 
@@ -2297,11 +2297,20 @@ class MyParser extends parser
 
         if(isInStruct){
             codegen.DoFuncEnd(fun, StructName);
+            codegen.RetRestore();
             offsetCnt = 0;     //reset counter after each init -- 11/19 
 
         }
         else{
             codegen.DoFuncEnd(fun, null);
+            codegen.DoDtorLocalCall();
+            System.out.println(m_symtab.getFunc().getName());
+            if(m_symtab.getFunc().getName().equals("main")) {
+                codegen.DoDtorCallGlobal();
+            }
+            else{
+                codegen.RetRestore();
+            }
             offsetCnt = 0;     //reset counter after each init -- 11/19 
 
         }
@@ -4075,6 +4084,8 @@ class MyParser extends parser
                     m_errors.print(Formatter.toString(ErrorMsg.error6a_Return_type, expr.getType().getName(), m_symtab.getFunc().getReturnType().getName()));
                     return new ErrorSTO("Error");
         }
+
+
 
         // Write Assembly: for Lit return stmt
         if(expr instanceof ConstSTO && !((ConstSTO)expr).getLitTag()){

@@ -112,7 +112,10 @@ public class AssemblyCodeGenerator {
 
     // DtorFuncs
     private Stack<STO> Dtors = new Stack<STO>();
+
+    private Stack<STO> globalsDtors = new Stack<STO>();
     private Stack<Integer> numDtors = new Stack<Integer>();
+    private Stack<Integer> numGlobalsDtors = new Stack<Integer>();
 
     private boolean holdOff = false;
 
@@ -1989,8 +1992,6 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, SAVE_OP, "%sp", "-96", "%sp");
         this.decreaseIndent();
 
-        this.DoDtorCall();
-
         
     }
 
@@ -3748,6 +3749,8 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(NO_PARAM, DOLLAR+"endif."+String.valueOf(val) + ":");
         this.decreaseIndent();
+
+        this.increaseIndent();
     
     }
 
@@ -4232,12 +4235,12 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(NO_PARAM, "! return "+ expr.getName()); 
         this.decreaseIndent();
 
-        // set  offset, %l7
+        // set  offset, %l7/%i0
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, SET_OP, expr.getOffset(), reg); 
         this.decreaseIndent();
 
-        // add  base, %l7, %l7
+        // add  base, %l7/%i0,%i0/%l7 
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(), reg, reg);
         this.decreaseIndent();
@@ -4273,6 +4276,14 @@ public class AssemblyCodeGenerator {
               }
            }
            this.decreaseIndent();
+        
+        }
+        else {
+            if(expr.flag) {
+               this.increaseIndent();
+               this.writeAssembly(TWO_PARAM, LOAD_OP, "[%i0]", "%i0"); 
+               this.decreaseIndent();
+            }
         
         }
 
@@ -4613,11 +4624,18 @@ public class AssemblyCodeGenerator {
     public void DoDtorHeader(STO dtor, STO offset) {
 
         this.writeAssembly(NEWLINE);
-
-        Dtors.push(dtor);
-
         ctordtor++;
-        numDtors.push(ctordtor);
+
+        if(!dtor.getIsGlobal()) {
+          Dtors.push(dtor);
+          numDtors.push(ctordtor);
+
+        }
+        else {
+          globalsDtors.push(dtor);
+          numGlobalsDtors.push(ctordtor);
+        }
+
         String label = DOLLAR + "ctorDtor"+ "." + String.valueOf(ctordtor);
 
         // .section .bss
@@ -4678,10 +4696,7 @@ public class AssemblyCodeGenerator {
        
     }
 
-    public void DoDtorCall() {
-       int size = Dtors.size();
-
-       boolean global = true;
+    public void DoDtorLocalCall() {
 
        if(Dtors.isEmpty()) {
           //ret
@@ -4695,111 +4710,91 @@ public class AssemblyCodeGenerator {
           this.decreaseIndent();
        }
 
-       if(Dtors.size() ==1 && Dtors.peek().getIsGlobal()) {
-                //ret
-                this.increaseIndent();
-                this.writeAssembly(NO_PARAM, RET_OP);
-                this.decreaseIndent();
-
-                //restore
-                this.increaseIndent();
-                this.writeAssembly(NO_PARAM, RESTORE_OP);
-                this.decreaseIndent(); 
-       }
-
-
        while(!Dtors.isEmpty()) {
           STO dtor = Dtors.pop();
           int num = numDtors.pop();
-          String label = DOLLAR + "ctorDtor"+ "." + String.valueOf(num);
-          String first = dtor.getName().replace("~","");
-          String second = dtor.getName().replace("~","$");
-  
-          if(dtor.getIsGlobal()) {
-
-             this.writeAssembly(NO_PARAM, label+".fini:");
-
-             this.increaseIndent();
-             this.writeAssembly(THREE_PARAM,SAVE_OP ,"%sp","-96","%sp");
-             this.decreaseIndent();
-
-
-
-          }
-
-          //set  dtor label %o0
-          this.increaseIndent();
-          this.writeAssembly(TWO_PARAM, SET_OP, label, "%o0");
-          this.decreaseIndent();
-
-          //ld  [%o0] %o0
-          this.increaseIndent();
-          this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
-          this.decreaseIndent();
-
-          //cmp  %o0 %g0
-          this.increaseIndent();
-          this.writeAssembly(TWO_PARAM, CMP_OP, "%o0", "%g0");
-          this.decreaseIndent();
-
-          //be  label.fini.skip
-          this.increaseIndent();
-          this.writeAssembly(ONE_PARAM, BE_OP, label+".fini"+".skip");
-          this.decreaseIndent();
-
-          //nop
-          this.increaseIndent();
-          this.writeAssembly(NO_PARAM, NOP_OP);
-          this.decreaseIndent();
-
-          //call  dtor
-          this.increaseIndent();
-          this.writeAssembly(ONE_PARAM, CALL_OP, first+"."+second+"."+((FuncSTO)dtor).getAssemblyName());
-          this.decreaseIndent();
-
-          //nop
-          this.increaseIndent();
-          this.writeAssembly(NO_PARAM, NOP_OP);
-          this.decreaseIndent();
-
-          //set  dtor label %o0
-          this.increaseIndent();
-          this.writeAssembly(TWO_PARAM, SET_OP, label, "%o0");
-          this.decreaseIndent();
-
-          //st %o1 [%o0]
-          this.increaseIndent();
-          this.writeAssembly(TWO_PARAM, STORE_OP, "%g0","[%o0]");
-          this.decreaseIndent();
-
-          // label.fini.skip
-          this.writeAssembly(NO_PARAM, label+".fini"+".skip:");
+          this.DoDtorAseembly(dtor,num);
        
-           if(!(Dtors.isEmpty()) &&Dtors.peek().getIsGlobal() && global) {
-             //ret
-             this.increaseIndent();
-             this.writeAssembly(NO_PARAM, RET_OP);
-             this.decreaseIndent();
+       }
+    
+    }
 
-             //restore
-             this.increaseIndent();
-             this.writeAssembly(NO_PARAM, RESTORE_OP);
-             this.decreaseIndent();
-             global = false;
-          
-          }
-          else if (Dtors.isEmpty() && !(dtor.getIsGlobal())) {
-             //ret
-             this.increaseIndent();
-             this.writeAssembly(NO_PARAM, RET_OP);
-             this.decreaseIndent();
+    public void DoDtorCallGlobal() {
+ 		
+ 	   this.RetRestore();
 
-             //restore
-             this.increaseIndent();
-             this.writeAssembly(NO_PARAM, RESTORE_OP);
-             this.decreaseIndent();
-          
-          }
+       while(!globalsDtors.isEmpty()) {
+          STO dtor = globalsDtors.pop();
+          int num = numGlobalsDtors.pop();
+          this.DoDtorAseembly(dtor,num);
+       
+       }
+   }
+
+    public void DoDtorAseembly(STO dtor, int num) {
+
+	  String label = DOLLAR + "ctorDtor"+ "." + String.valueOf(num);
+	  String first = dtor.getName().replace("~","");
+	  String second = dtor.getName().replace("~","$");
+
+	  if(dtor.getIsGlobal()) {
+
+         this.writeAssembly(NO_PARAM, label+".fini:");
+
+         this.increaseIndent();
+         this.writeAssembly(THREE_PARAM,SAVE_OP ,"%sp","-96","%sp");
+         this.decreaseIndent();
+
+      }
+
+	  //set  dtor label %o0
+      this.increaseIndent();
+      this.writeAssembly(TWO_PARAM, SET_OP, label, "%o0");
+      this.decreaseIndent();
+
+      //ld  [%o0] %o0
+      this.increaseIndent();
+      this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
+      this.decreaseIndent();
+
+      //cmp  %o0 %g0
+      this.increaseIndent();
+      this.writeAssembly(TWO_PARAM, CMP_OP, "%o0", "%g0");
+      this.decreaseIndent();
+
+      //be  label.fini.skip
+      this.increaseIndent();
+      this.writeAssembly(ONE_PARAM, BE_OP, label+".fini"+".skip");
+      this.decreaseIndent();
+
+      //nop
+      this.increaseIndent();
+      this.writeAssembly(NO_PARAM, NOP_OP);
+      this.decreaseIndent();
+
+      //call  dtor
+      this.increaseIndent();
+      this.writeAssembly(ONE_PARAM, CALL_OP, first+"."+second+"."+((FuncSTO)dtor).getAssemblyName());
+      this.decreaseIndent();
+
+      //nop
+      this.increaseIndent();
+      this.writeAssembly(NO_PARAM, NOP_OP);
+      this.decreaseIndent();
+
+      //set  dtor label %o0
+      this.increaseIndent();
+      this.writeAssembly(TWO_PARAM, SET_OP, label, "%o0");
+      this.decreaseIndent();
+
+      //st %o1 [%o0]
+      this.increaseIndent();
+      this.writeAssembly(TWO_PARAM, STORE_OP, "%g0","[%o0]");
+      this.decreaseIndent();
+
+      // label.fini.skip
+      this.writeAssembly(NO_PARAM, label+".fini"+".skip:");
+
 
           if(dtor.getIsGlobal()) {
 
@@ -4848,9 +4843,7 @@ public class AssemblyCodeGenerator {
              
           }
 
-       
-       }
-    
+
     }
 
     public void DoDtorParam() {
@@ -4859,6 +4852,18 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(TWO_PARAM, STORE_OP, "%i0","[%fp+68]");
         this.decreaseIndent();
     
+    }
+
+    public void RetRestore() {
+
+    	  this.increaseIndent();
+          this.writeAssembly(NO_PARAM, RET_OP);
+          this.decreaseIndent();
+
+          //restore
+          this.increaseIndent();
+          this.writeAssembly(NO_PARAM, RESTORE_OP);
+          this.decreaseIndent();
     }
 
 }
