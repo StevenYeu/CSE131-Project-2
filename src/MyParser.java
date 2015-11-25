@@ -586,7 +586,7 @@ class MyParser extends parser
               if(overParSize == 0 && parSize == 0) { // case if calling function has no params
                     if(this.getNewCall() ) {
                       result = newCall;
-                      this.setNewCall(false);
+                      //this.setNewCall(false);
 
                     }
 
@@ -624,7 +624,7 @@ class MyParser extends parser
                         result.setAssemblyName(((FuncSTO)fun).getAssemblyName());
 
                        // loop to create array of struct
-                        for(int i = 0; i < ((ArrayType)arr).getLength(); i++) {
+                        for(int i = 0; i < ((ArrayType)arr).getSize(); i++) {
 
                           // -- changed
                           STO offset = new VarSTO(result.getName(), result.getType());
@@ -635,13 +635,14 @@ class MyParser extends parser
                           codegen.DoStructArray(result,offset,i);
                           codegen.DoCtor(offset, fun);
                           // dto stuff
-                          STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
-                          dtor = new FuncSTO(dtor.getName(),dtor.getType());
-                          if(m_symtab.getLevel() == 1 || optstatic != null) {
-                             dtor.setIsGlobal(true);
+                          if(!this.getNewCall()) {
+                            STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
+                            dtor = new FuncSTO(dtor.getName(),dtor.getType());
+                            if(m_symtab.getLevel() == 1 || optstatic != null) {
+                              dtor.setIsGlobal(true);
+                            }
+                            codegen.DoDtorHeader(dtor,offset);
                           }
-                          codegen.DoDtorHeader(dtor,result);
-
                           
 
                         }
@@ -704,12 +705,17 @@ class MyParser extends parser
 
                       codegen.DoCtor(result, fun);
                       // dtor stuff regular for no param case
-                      STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
-                      dtor = new FuncSTO(dtor.getName(),dtor.getType());
-                      if(m_symtab.getLevel() == 1 || optstatic != null) {
-                        dtor.setIsGlobal(true);
-                      }
-                      codegen.DoDtorHeader(dtor,result);
+                      
+                          if(!this.getNewCall()) {
+                            STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
+                            dtor = new FuncSTO(dtor.getName(),dtor.getType());
+                            if(m_symtab.getLevel() == 1 || optstatic != null) {
+                              dtor.setIsGlobal(true);
+                            }
+                            codegen.DoDtorHeader(dtor,result);
+                          }
+
+
 
                       if(m_symtab.getLevel() == 1){
 
@@ -735,6 +741,8 @@ class MyParser extends parser
                   
                     
                     m_symtab.insert(result);
+
+                    if(this.getNewCall()) { this.setNewCall(false);}
                     return;
 
               }
@@ -779,7 +787,7 @@ class MyParser extends parser
                      result.setAssemblyName(((FuncSTO)fun).getAssemblyName());
 
                     // loop to create array of struct
-                     for(int i = 0; i < ((ArrayType)arr).getLength(); i++) {
+                     for(int i = 0; i < ((ArrayType)arr).getSize(); i++) {
                        
                        // -- changed
                        STO offset = new VarSTO(result.getName(), result.getType());
@@ -791,15 +799,15 @@ class MyParser extends parser
                        // -- changed
                        codegen.DoCtorThis(offset);
                        offsetCnt = codegen.DoFuncCallParam(offset, fun, params, offsetCnt);
-                       // dtor stuff for param array case
-                       STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
-                       dtor = new FuncSTO(dtor.getName(),dtor.getType());
-                       if(m_symtab.getLevel() == 1 || optstatic != null) {
-                          dtor.setIsGlobal(true);
+                       // dtor stuff for param array case                       
+                       if(!this.getNewCall()) {
+                          STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
+                          dtor = new FuncSTO(dtor.getName(),dtor.getType());
+                          if(m_symtab.getLevel() == 1 || optstatic != null) {
+                            dtor.setIsGlobal(true);
+                          }
+                          codegen.DoDtorHeader(dtor,offset);
                        }
-                       codegen.DoDtorHeader(dtor,result);
-
-
 
                      }
                      if(m_symtab.getLevel() == 1){
@@ -864,13 +872,16 @@ class MyParser extends parser
                   offsetCnt = codegen.DoFuncCallParam(result, fun, params, offsetCnt);
                   
                   // dtor stuff for regular param case
-                  STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
-                  dtor = new FuncSTO(dtor.getName(),dtor.getType());
-                  if(m_symtab.getLevel() == 1 || optstatic != null) {
-                     dtor.setIsGlobal(true);
-                  }
+                 if(!this.getNewCall()) {
+                    STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
+                    dtor = new FuncSTO(dtor.getName(),dtor.getType());
+                    if(m_symtab.getLevel() == 1 || optstatic != null) {
+                        dtor.setIsGlobal(true);
+                    }
 
-                  codegen.DoDtorHeader(dtor,result);
+                    codegen.DoDtorHeader(dtor,result);
+
+                 }
                
                   if(m_symtab.getLevel() == 1){
                       //a sto for this init func, does nothing except holds offset and base
@@ -895,6 +906,8 @@ class MyParser extends parser
                  
                   
                  m_symtab.insert(result);
+
+                 if(this.getNewCall()) { this.setNewCall(false);}
                  return;
               }
           }
@@ -950,12 +963,14 @@ class MyParser extends parser
                      STO antifun = this.getSomeFunc();
                      codegen.DoCtor(offset, antifun);
                      // dtor stuff for overload, array case no param
-                     STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
-                     dtor = new FuncSTO(dtor.getName(),dtor.getType());
-                     if(m_symtab.getLevel() == 1 || optstatic != null) {
-                         dtor.setIsGlobal(true);
+                     if(!this.getNewCall()) {
+                        STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
+                        dtor = new FuncSTO(dtor.getName(),dtor.getType());
+                        if(m_symtab.getLevel() == 1 || optstatic != null) {
+                            dtor.setIsGlobal(true);
+                        }
+                        codegen.DoDtorHeader(dtor,offset);
                      }
-                     codegen.DoDtorHeader(dtor,offset);
 
                  }
                  else{
@@ -965,13 +980,17 @@ class MyParser extends parser
                      offsetCnt = codegen.DoFuncCallParam(result, antifun, params, offsetCnt);
                      
                      // dtor stuff  overload case , array, params
-                     STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
-                     dtor = new FuncSTO(dtor.getName(),dtor.getType());
-                     if(m_symtab.getLevel() == 1 || optstatic != null) {
-                        dtor.setIsGlobal(true);
+                     
+                     if(!this.getNewCall()) {
+                        STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
+                        dtor = new FuncSTO(dtor.getName(),dtor.getType());
+                        if(m_symtab.getLevel() == 1 || optstatic != null) {
+                           dtor.setIsGlobal(true);
+                        }
+
+                        codegen.DoDtorHeader(dtor,result);
                      }
 
-                     codegen.DoDtorHeader(dtor,result);
 
                  }
 
@@ -1044,13 +1063,15 @@ class MyParser extends parser
                   codegen.DoCtor(result, result);
 
                   // dtor stuff for reg overload no params
-                  STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
-                  dtor = new FuncSTO(dtor.getName(),dtor.getType());
-                  if(m_symtab.getLevel() == 1 || optstatic  != null) {
-                     dtor.setIsGlobal(true);
-                  }
+                  if(!this.getNewCall()) {
+                     STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
+                     dtor = new FuncSTO(dtor.getName(),dtor.getType());
+                     if(m_symtab.getLevel() == 1 || optstatic  != null) {
+                        dtor.setIsGlobal(true);
+                     }
 
-                  codegen.DoDtorHeader(dtor,result);
+                     codegen.DoDtorHeader(dtor,result);
+                  }
 
               }
               else{
@@ -1060,13 +1081,15 @@ class MyParser extends parser
                   offsetCnt = codegen.DoFuncCallParam(result, antifun, params, offsetCnt);
                   
                   // dot stuff for reg overload params
-                  STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
-                  dtor = new FuncSTO(dtor.getName(),dtor.getType());
-                  if(m_symtab.getLevel() == 1 || optstatic != null) {
-                     dtor.setIsGlobal(true);
-                  }
+                  if(!this.getNewCall()) {
+                     STO dtor = ((StructType)typ).getDtor("~"+typ.getName());
+                     dtor = new FuncSTO(dtor.getName(),dtor.getType());
+                     if(m_symtab.getLevel() == 1 || optstatic  != null) {
+                        dtor.setIsGlobal(true);
+                     }
 
-                  codegen.DoDtorHeader(dtor,result);
+                     codegen.DoDtorHeader(dtor,result);
+                  }
 
               }
               if(m_symtab.getLevel() == 1){
@@ -1093,8 +1116,10 @@ class MyParser extends parser
            result.setIsAddressable(true);
            result.setIsModifiable(true);
            m_symtab.insert(result);
+           if(this.getNewCall()) { this.setNewCall(false);}
            return;
        }
+
 	}
 
 
@@ -2395,7 +2420,7 @@ class MyParser extends parser
 
         if(isInStruct){
             codegen.DoFuncEnd(fun, StructName);
-            codegen.RetRestore();
+            codegen.RetRestoreStruct();
             offsetCnt = 0;     //reset counter after each init -- 11/19 
 
         }
@@ -3032,12 +3057,18 @@ class MyParser extends parser
                  }
 
                  if(!(func.getType() instanceof StructType)) {
-                   offsetCnt ++;
+                     if(!(((FuncSTO)fun).getReturnType() instanceof VoidType)){
+                         offsetCnt ++;
+                     }
+        
                    int val = -offsetCnt * ((FuncSTO)fun).getReturnType().getSize();
+                
                    String offset = String.valueOf(val);
                    result.setOffset(offset);
                    result.setBase("%fp");
+               
                    offsetCnt = codegen.DoFuncCallParam(result, fun, params, offsetCnt);
+
 
                  }
 
@@ -3337,6 +3368,9 @@ class MyParser extends parser
                         if(locals.get(i).getType() instanceof PointerType){
                             result.setIsPointer(true);
                         }
+                        if(sto.getArrayTag()) {
+                          result.setArrayTag(true);
+                        }
                         offsetCnt++;
                         result.setOffset(String.valueOf(offsetCnt * -4));
                         result.setBase("%fp");
@@ -3465,7 +3499,6 @@ class MyParser extends parser
             v.setOffset(String.valueOf(++offsetCnt * -4));
             v.setBase("%fp");
             v.setArrayTag(true);
-
             codegen.DoArrayCheck(sto, expr, v);
             return v;
         }

@@ -118,6 +118,7 @@ public class AssemblyCodeGenerator {
     private Stack<Integer> numGlobalsDtors = new Stack<Integer>();
 
     private boolean holdOff = false;
+    private boolean dtorFlag = false;
 
 
     // This is the hold off buffer that handles premature printing
@@ -771,7 +772,12 @@ public class AssemblyCodeGenerator {
 
         // .skip # (should anto init var to 0/false
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, SKIP, String.valueOf(sto.getType().getSize())); 
+        if(sto.getType() instanceof ArrayType){
+            this.writeAssembly(ONE_PARAM, SKIP, String.valueOf(((ArrayType)sto.getType()).getTotalSize()));
+        }
+        else{
+            this.writeAssembly(ONE_PARAM, SKIP, String.valueOf(sto.getType().getSize()));
+        }
         this.decreaseIndent();
 
         this.writeAssembly(NEWLINE);
@@ -1238,7 +1244,12 @@ public class AssemblyCodeGenerator {
 
         // .skip  # (not always 4, since we have struct) 
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, SKIP, String.valueOf(sto.getType().getSize())); 
+        if(sto.getType() instanceof ArrayType){
+            this.writeAssembly(ONE_PARAM, SKIP, String.valueOf(((ArrayType)sto.getType()).getTotalSize()));
+        }
+        else{
+            this.writeAssembly(ONE_PARAM, SKIP, String.valueOf(sto.getType().getSize()));
+        }
         this.decreaseIndent();
 
         this.writeAssembly(NEWLINE);
@@ -3372,11 +3383,15 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(TWO_PARAM, SET_OP, expr.getOffset(), "%o0");
         this.decreaseIndent();
 
-        //add base, %o0, %0
+        //add base, %o0, %o0
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(), "%o0", "%o0");
         this.decreaseIndent();
 
+        if(sto.flag){
+            this.load(o0, o0);
+
+        }
         //set 4, %o1
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, SET_OP, String.valueOf(sto.getType().getSize()), "%o1");
@@ -3456,6 +3471,10 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(), "%o0", "%o0");
         this.decreaseIndent();
+
+        if(sto.flag){
+            this.load(o0, o0);
+        }
 
         //set #, %o1
         int i = ((ArrayType)expr.getType()).getTotalSize();
@@ -4504,7 +4523,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%o0", "%o0");
         this.decreaseIndent();
 
-        if(sto.getArrayTag() || sto.flag){
+        if(sto.getArrayTag() || sto.flag ){
             // ld [%o0] %o0
             this.increaseIndent();
             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");
@@ -4609,6 +4628,15 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, deleted.getBase(),"%l7", "%l7");
         this.decreaseIndent();
 
+        // added 11/21 sto.getIsPointer() and sto.flag
+        if(deleted.getArrayTag() || deleted.getIsPointer() || deleted.flag){ 
+            //ld [%o1], %o1
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
+            this.decreaseIndent();
+
+        }
+
         //ld [%l7] %o0
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]","%o0");
@@ -4636,6 +4664,15 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, deleted.getBase(),"%l7", "%l7");
         this.decreaseIndent();
+
+        // added 11/21 sto.getIsPointer() and sto.flag
+        if(deleted.getArrayTag() || deleted.getIsPointer() || deleted.flag){ 
+            //ld [%o1], %o1
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
+            this.decreaseIndent();
+
+        }
 
         //ld [%l7] %o0
         this.increaseIndent();
@@ -4665,7 +4702,18 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, deleted.getBase(),"%o1", "%o1");
         this.decreaseIndent();
 
-        //ld [%l7] %o0
+
+        if(deleted.getArrayTag() || deleted.getIsPointer() || deleted.flag){ 
+            //ld [%o1], %o1
+            this.increaseIndent();
+            this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1");
+            this.decreaseIndent();
+
+        }
+
+
+
+        //st [%l7] %o0
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, STORE_OP, "%g0","[%o1]");
         this.decreaseIndent();
@@ -4680,6 +4728,7 @@ public class AssemblyCodeGenerator {
 
         if(!dtor.getIsGlobal()) {
           Dtors.push(dtor);
+          this.dtorFlag = true;
           numDtors.push(ctordtor);
 
         }
@@ -4740,6 +4789,10 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, offset.getBase(),"%o1", "%o1");
         this.decreaseIndent();
+
+        if(offset.getArrayTag()) {
+           this.load(o1,o1);
+        }
 
         //st %o1 [%o0]
         this.increaseIndent();
@@ -4908,14 +4961,28 @@ public class AssemblyCodeGenerator {
 
     public void RetRestore() {
 
-    	  this.increaseIndent();
-          this.writeAssembly(NO_PARAM, RET_OP);
-          this.decreaseIndent();
+         if(this.dtorFlag == true) {
+    	   this.increaseIndent();
+           this.writeAssembly(NO_PARAM, RET_OP);
+           this.decreaseIndent();
 
-          //restore
-          this.increaseIndent();
-          this.writeAssembly(NO_PARAM, RESTORE_OP);
-          this.decreaseIndent();
+           //restore
+           this.increaseIndent();
+           this.writeAssembly(NO_PARAM, RESTORE_OP);
+           this.decreaseIndent();
+         }
+    }
+
+    public void RetRestoreStruct() {
+
+    	   this.increaseIndent();
+           this.writeAssembly(NO_PARAM, RET_OP);
+           this.decreaseIndent();
+
+           //restore
+           this.increaseIndent();
+           this.writeAssembly(NO_PARAM, RESTORE_OP);
+           this.decreaseIndent();
     }
 
     public void DoTypeCast(STO casted, Type cast, STO offset, STO promote) {
