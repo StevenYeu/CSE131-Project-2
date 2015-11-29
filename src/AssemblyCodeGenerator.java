@@ -120,6 +120,8 @@ public class AssemblyCodeGenerator {
     private boolean holdOff = false;
     private boolean dtorFlag = false;
 
+    private Stack<Integer> andor = new Stack<Integer>();
+
 
     // This is the hold off buffer that handles premature printing
     StringBuilder bufferStmt = new StringBuilder();
@@ -950,6 +952,11 @@ public class AssemblyCodeGenerator {
             this.increaseIndent();
             this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(),"%l7", "%l7");
             this.decreaseIndent();
+
+            //added 11/29
+            if(expr.getIsPointer()) {
+               this.load(l7,l7);
+            }
 
             //ld  [%l7], [%o0]
             this.increaseIndent();
@@ -2789,14 +2796,14 @@ public class AssemblyCodeGenerator {
 
         if(op.equals("&&")){
             andorCnt++;
+            andor.push(andorCnt);
             this.DoCmpBool(BE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
             
-
         }
         else if(op.equals("||")){
             andorCnt++;
+            andor.push(andorCnt);
             this.DoCmpBool(BNE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
-            
         }
 
     }
@@ -2828,6 +2835,7 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
 
+
         // check the second operand is Lit
         if(b instanceof ConstSTO && (!((ConstSTO)b).getLitTag())){
            this.DoOperandLit(b, "%o0"); 
@@ -2838,21 +2846,22 @@ public class AssemblyCodeGenerator {
         }
 
 
+        int cnt = andor.pop();
         if(op.equals("&&")){
-            this.DoCmpBool(BE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
+            this.DoCmpBool(BE_OP, DOLLAR+"andorSkip."+String.valueOf(cnt));
             s = "0";
             nots = "1";
 
         }
         else if(op.equals("||")){
-            this.DoCmpBool(BNE_OP, DOLLAR+"andorSkip."+String.valueOf(andorCnt));
+            this.DoCmpBool(BNE_OP, DOLLAR+"andorSkip."+String.valueOf(cnt));
             s = "1";
             nots = "0";
         }
 
         //ba     .$$.andorEnd.#
         this.increaseIndent();
-        this.writeAssembly(ONE_PARAM, BA_OP, DOLLAR+"andorEnd."+String.valueOf(andorCnt));
+        this.writeAssembly(ONE_PARAM, BA_OP, DOLLAR+"andorEnd."+String.valueOf(cnt));
         this.decreaseIndent();
 
         // move #, %o0
@@ -2862,7 +2871,7 @@ public class AssemblyCodeGenerator {
 
         //.$$.andorSkip.#:
         
-        this.writeAssembly(NO_PARAM, DOLLAR+"andorSkip."+String.valueOf(andorCnt)+":");
+        this.writeAssembly(NO_PARAM, DOLLAR+"andorSkip."+String.valueOf(cnt)+":");
         
 
         // mov  s, %o0
@@ -2872,7 +2881,7 @@ public class AssemblyCodeGenerator {
 
         //.$$.andorEnd.#:
         
-        this.writeAssembly(NO_PARAM, DOLLAR+"andorEnd."+String.valueOf(andorCnt)+":");
+        this.writeAssembly(NO_PARAM, DOLLAR+"andorEnd."+String.valueOf(cnt)+":");
         
 
         if((!(a instanceof ConstSTO)) || (!(b instanceof ConstSTO))){
@@ -3388,7 +3397,8 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(), "%o0", "%o0");
         this.decreaseIndent();
 
-        if(sto.flag){
+        // changed 11/29 from flag to isStructTag
+        if(sto.getStructTag()){
             this.load(o0, o0);
 
         }
@@ -3472,7 +3482,9 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(), "%o0", "%o0");
         this.decreaseIndent();
 
-        if(sto.flag){
+
+        // changed 11/29 from flag to isStructTag
+        if(sto.getStructTag()){
             this.load(o0, o0);
         }
 
@@ -4311,7 +4323,7 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
        
-        if(expr.getIsPointer()) {
+        if(expr.getIsPointer() || expr.flag || expr.getArrayTag()) {
               this.increaseIndent();
               this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", reg);
               this.decreaseIndent();
@@ -4324,9 +4336,10 @@ public class AssemblyCodeGenerator {
            this.increaseIndent();
            if(expr.getType() instanceof FloatType) {
                // float case
-              if(expr.flag) {
+              /*if(expr.flag || expr.getArrayTag()) {
                      this.load(reg,reg);
-              }
+              }*/
+
               this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", "%f0"); 
            }
            else {
@@ -4340,23 +4353,24 @@ public class AssemblyCodeGenerator {
               }
               else{
                   // non float case
-                  if(expr.flag) {
+                  /*if(expr.flag || expr.getArrayTag()) {
                      this.load(reg,reg);
-                  }
+                  }*/
                   this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", "%i0");
               }
            }
            this.decreaseIndent();
         
         }
-        else {
+        /*else {
             if(expr.flag) {
+
                this.increaseIndent();
                this.writeAssembly(TWO_PARAM, LOAD_OP, "[%i0]", "%i0"); 
                this.decreaseIndent();
             }
         
-        }
+        }*/
 
         //call name.type.fini
         this.increaseIndent();
@@ -4423,6 +4437,10 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(), "%o1", "%o1");
         this.decreaseIndent();
+
+        if(expr.getStructTag() || expr.getArrayTag() || expr.flag || expr.getIsPointer()) {
+           this.load(o1,o1);
+        }
 
         // st   %o0/%f0, [%o1]
         this.increaseIndent();
@@ -4523,7 +4541,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(),"%o0", "%o0");
         this.decreaseIndent();
 
-        if(sto.getArrayTag() || sto.flag ){
+        if(sto.getArrayTag() || sto.flag || sto.getIsPointer() ){
             // ld [%o0] %o0
             this.increaseIndent();
             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o0]", "%o0");

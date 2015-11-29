@@ -7,7 +7,7 @@
 import java_cup.runtime.*;
 import java.util.Vector;
 import java.util.List;
-
+import java.util.HashMap;
 class MyParser extends parser
 {
 	private Lexer m_lexer;
@@ -31,6 +31,7 @@ class MyParser extends parser
     private boolean newCall = false; // new statement
     private AssemblyCodeGenerator codegen; 
     private int andor = 0;
+    private HashMap<String,Integer> statMap = new HashMap<String,Integer>();
     // keep track of the offset
     private int offsetCnt = 0;
     // keep track of the offset in struct
@@ -335,7 +336,16 @@ class MyParser extends parser
             if(optstatic != null){
                 sto.setBase("%g0");
                 String name = m_symtab.getFunc().getName()+"."+m_symtab.getFunc().getAssemblyName()+"."+id;
-                sto.setOffset(name);
+                if(statMap.containsKey(name)){
+                    int val = statMap.get(name);
+                    val++;
+                    statMap.put(name,val);
+                    sto.setOffset(name+"$"+String.valueOf(this.statMap.get(name)));
+                }
+                else{
+                    this.statMap.put(name,0);
+                    sto.setOffset(name);
+                }
             }
             else{
                 sto.setBase("%fp");
@@ -1274,8 +1284,18 @@ class MyParser extends parser
                     // static array uninit
                     String name = m_symtab.getFunc().getName()+"."+m_symtab.getFunc().getAssemblyName()+"."+id;
                     sto.setBase("%g0");
-                    sto.setOffset(name);
-                    codegen.DoGlobalVarDecl(sto, name, optstatic);
+                    if(statMap.containsKey(name)){
+                        int val = statMap.get(name);
+                        val++;
+                        statMap.put(name,val);
+                        sto.setOffset(name+"$"+String.valueOf(this.statMap.get(name)));
+                    }
+                    else{
+                        this.statMap.put(name,0);
+                        sto.setOffset(name);
+                    }
+
+                    codegen.DoGlobalVarDecl(sto, sto.getOffset(), optstatic);
                 }
                 // non static array uninit
                 else{
@@ -1315,8 +1335,18 @@ class MyParser extends parser
                             String name = m_symtab.getFunc().getName()+"."+m_symtab.getFunc().getAssemblyName()+"."+id;
 
                             sto.setBase("%g0");
-                            sto.setOffset(name);
-                            codegen.DoGlobalVarDecl(sto, name, optstatic);
+                            if(statMap.containsKey(name)){
+                                int val = statMap.get(name);
+                                val++;
+                                statMap.put(name,val);
+                                sto.setOffset(name+"$"+String.valueOf(this.statMap.get(name)));
+                            }
+                            else{
+                                this.statMap.put(name,0);
+                                sto.setOffset(name);
+                            }
+
+                            codegen.DoGlobalVarDecl(sto, sto.getOffset(), optstatic);
                             
                         }
                         else{
@@ -1373,24 +1403,34 @@ class MyParser extends parser
 
                     // local static case
                     if(optstatic != null){
-                        //to be implemented
+                        
                         STO currFunc = m_symtab.getFunc();
                         
                         String name = currFunc.getName()+"."+((FuncSTO)currFunc).getAssemblyName()+"."+sto.getName();
                         
                         // set base and offset
                         sto.setBase("%g0");
-                        sto.setOffset(name);
+                        if(statMap.containsKey(name)){
+                            int val = statMap.get(name);
+                            val++;
+                            statMap.put(name,val);
+                            sto.setOffset(name+"$"+String.valueOf(this.statMap.get(name)));
+                        }
+                        else{
+                            this.statMap.put(name,0);
+                            sto.setOffset(name);
+                        }
+
                         codegen.setholdOff(false);
 
-                        codegen.DoGlobalVarDecl(sto, name, optstatic);
-                        codegen.DoStaticGuardStart(sto, ".$.init."+name);
+                        codegen.DoGlobalVarDecl(sto, sto.getOffset(), optstatic);
+                        codegen.DoStaticGuardStart(sto, ".$.init."+sto.getOffset());
 
                         codegen.TimeToWrite();
 
                         codegen.DoVarAssign(sto, expr, null);
 
-                        codegen.DoStaticGuardEnd(".$.init."+name);
+                        codegen.DoStaticGuardEnd(".$.init."+sto.getOffset());
 
 
                     }
@@ -1432,7 +1472,18 @@ class MyParser extends parser
                     
                             String name = m_symtab.getFunc().getName()+"."+m_symtab.getFunc().getAssemblyName()+"."+id;
                             sto.setBase("%g0");
-                            sto.setOffset(name);
+                            if(statMap.containsKey(name)){
+                                int val = statMap.get(name);
+                                val++;
+                                statMap.put(name,val);
+                                sto.setOffset(name+"$"+String.valueOf(this.statMap.get(name)));
+                            }
+                            else{
+                                this.statMap.put(name,0);
+                                sto.setOffset(name);
+                            }
+
+                        
 
                             codegen.DoGlobalVarDecl(sto, name, optstatic);
                         }
@@ -1543,7 +1594,18 @@ class MyParser extends parser
                     }
                     else{
                         sto.setBase("%g0");
-                        sto.setOffset(m_symtab.getFunc().getName()+"."+m_symtab.getFunc().getAssemblyName()+"."+id);
+                        String name = m_symtab.getFunc().getName()+"."+m_symtab.getFunc().getAssemblyName()+"."+id;
+                        if(statMap.containsKey(name)){
+                            int val = statMap.get(name);
+                            val++;
+                            statMap.put(name,val);
+                            sto.setOffset(name+"$"+String.valueOf(this.statMap.get(name)));
+                       }
+                       else{
+                           this.statMap.put(name,0);
+                           sto.setOffset(name);
+                       }
+
                     }
 
                     // const init
@@ -1556,8 +1618,8 @@ class MyParser extends parser
                             // static case
                             if(optstatic != null){
                                 float f = exp.getFloatValue();
-                                String name = m_symtab.getFunc().getName()+"."+m_symtab.getFunc().getAssemblyName()+"."+id;
-                                codegen.DoGlobalVarInitLit(sto, String.valueOf(f), name, optstatic);
+                            
+                                codegen.DoGlobalVarInitLit(sto, String.valueOf(f), sto.getOffset(), optstatic);
 
                             }
                             else{
@@ -1583,8 +1645,8 @@ class MyParser extends parser
                             String str = String.valueOf(i);
                             // static case
                             if(optstatic != null){
-                                String name = m_symtab.getFunc().getName()+"."+m_symtab.getFunc().getAssemblyName()+"."+id;
-                                codegen.DoGlobalVarInitLit(sto, str, name, optstatic);
+  
+                                codegen.DoGlobalVarInitLit(sto, str, sto.getOffset(), optstatic);
                             }
                             else{
                                 codegen.DoConstAssign(sto, str, exp.getName());
@@ -1595,8 +1657,7 @@ class MyParser extends parser
                             String str = String.valueOf(i);
                             // static case
                             if(optstatic != null){
-                                String name = m_symtab.getFunc().getName()+"."+m_symtab.getFunc().getAssemblyName()+"."+id;
-                                codegen.DoGlobalVarInitLit(sto, str, name, optstatic); 
+                                 codegen.DoGlobalVarInitLit(sto, str, sto.getOffset(), optstatic); 
                             }
                             else{
                                 codegen.DoConstAssign(sto, str, exp.getName());
@@ -1912,7 +1973,17 @@ class MyParser extends parser
                 if(optstatic != null){
                     sto.setBase("%g0");
                     String name = m_symtab.getFunc().getName() + "." + m_symtab.getFunc().getAssemblyName() + "." + id;
-                    sto.setOffset(name);
+                    if(statMap.containsKey(name)){
+                        int val = statMap.get(name);
+                        val++;
+                        statMap.put(name,val);
+                        sto.setOffset(name+"$"+String.valueOf(this.statMap.get(name)));
+                    }
+                    else{
+                        this.statMap.put(name,0);
+                        sto.setOffset(name);
+                    }
+                    
                 }
                 else{
                     sto.setBase("%fp");
@@ -2058,7 +2129,17 @@ class MyParser extends parser
            if(optstatic != null){
                sto.setBase("%g0");
                String name = m_symtab.getFunc().getName()+"."+m_symtab.getFunc().getAssemblyName()+"."+id;
-               sto.setOffset(name);
+                if(statMap.containsKey(name)){
+                    int val = statMap.get(name);
+                    val++;
+                    statMap.put(name,val);
+                    sto.setOffset(name+"$"+String.valueOf(this.statMap.get(name)));
+                }
+                else{
+                    this.statMap.put(name,0);
+                    sto.setOffset(name);
+                }
+            
            }
            else{
                // set base and offset
@@ -2148,6 +2229,14 @@ class MyParser extends parser
             
             STO elm = locals.get(i);
             if(elm instanceof FuncSTO) {
+                  if(elm.getType() instanceof PointerType){
+                      if( ((PointerType)elm.getType()).getBaseType() instanceof StructType){
+                          if( ((PointerType)elm.getType()).getBaseType().getName().equals(scopeStruct.getName()) ) {
+                              ((PointerType)locals.get(i).getType()).setBaseType(scopeStruct);
+                          }
+                      }
+                  }
+
                 sto.getFuncs().addElement(elm);
             }
             else {
@@ -3356,6 +3445,7 @@ class MyParser extends parser
                 if(locals.get(i).getName().equals(strID)){
                     if(locals.get(i) instanceof FuncSTO) {
                       this.setStructFunCall(true);
+                      return locals.get(i);
                     }
                     // Assembly write: struct call
                     STO result = new VarSTO(locals.get(i).getName(), locals.get(i).getType());
@@ -3365,7 +3455,8 @@ class MyParser extends parser
                         result.setStructTag(locals.get(i).getStructTag());
                         result.setArrayTag(locals.get(i).getArrayTag());
                         result.setStructOffset(locals.get(i).getStructOffset());
-                        if(locals.get(i).getType() instanceof PointerType){
+                        // add 11/28 sto.getIsPointer
+                        if(locals.get(i).getType() instanceof PointerType || sto.getIsPointer() ){
                             result.setIsPointer(true);
                         }
                         if(sto.getArrayTag()) {
@@ -4213,6 +4304,8 @@ class MyParser extends parser
 
    
     STO DoReturnStmt(STO expr){
+        
+
         if(expr instanceof ErrorSTO)
             return expr;
         if(!(m_symtab.getFunc().getReturnType() instanceof VoidType)){
@@ -4298,8 +4391,8 @@ class MyParser extends parser
           
             codegen.DoReturnNonVoid(m_symtab.getFunc(), expr, promote);
         }
-        STO result = new ExprSTO("return", m_symtab.getFunc().getReturnType() );
-        return result;
+        //STO result = new ExprSTO("return", m_symtab.getFunc().getReturnType() );
+        return expr;
     }
 
 
@@ -4503,10 +4596,10 @@ class MyParser extends parser
             m_errors.print(Formatter.toString(ErrorMsg.error15_Receiver, sto.getType().getName()));
             return new ErrorSTO("Error");
 
-            
         }
-
+         // add 11/28
         return sto;
+
     }
     STO DoPointerArrowCheck(STO sto, String strID){
         if (sto instanceof ErrorSTO)
@@ -4527,11 +4620,15 @@ class MyParser extends parser
         }
         else {
         
-           
            Scope s = ((StructType)((PointerType)sto.getType()).getBaseType()).getScope();
            Vector<STO> locals = s.getLocals();
            for (int i = 0;i < locals.size() ; i++) {
            	   if(locals.get(i).getName().equals(strID)) {
+
+                   if(locals.get(i) instanceof FuncSTO) {
+                      return locals.get(i);
+                   }
+
                   //STO temp = locals.get(i);
                   STO temp = new VarSTO(locals.get(i).getName(), locals.get(i).getType()); 
                   //temp.setStructTag(locals.get(i).getStructTag());
@@ -4591,14 +4688,18 @@ class MyParser extends parser
         if(sto instanceof ErrorSTO){
             return sto;
         }
-        VarSTO result = new VarSTO(sto.getName(),((PointerType)sto.getType()).getNext());
+        // added 11/28
+        STO result;
+        
+        result = new VarSTO(sto.getName(),((PointerType)sto.getType()).getNext());
+
         if(!(((PointerType)sto.getType()).getNext() instanceof ArrayType)){
-            result.setIsModifiable(true);
-            result.setIsAddressable(true);
+           result.setIsModifiable(true);
+           result.setIsAddressable(true);
         }
         else{
-            result.setIsModifiable(false);
-            result.setIsAddressable(true);
+           result.setIsModifiable(false);
+           result.setIsAddressable(true);
 
         }
 
@@ -4676,9 +4777,10 @@ class MyParser extends parser
                    codegen.DoNew(sto);
                    STO def = this.DoDereference(sto);
                    this.setInNew(def.getIsPointer());
-            
-                   this.DoCtorStructs(def.getName(), def.getType(), new Vector<STO>() ,params, null);
+                    // add 11/28 "new" 
+                   this.DoCtorStructs("new "+def.getName(), def.getType(), new Vector<STO>() ,params, null);
         
+                   //System.out.println("Def:" + def.getName());
                 }
             }
             else{
@@ -4687,7 +4789,8 @@ class MyParser extends parser
                    STO def = this.DoDereference(sto);
                    this.setInNew(def.getIsPointer());
         
-                   this.DoCtorStructs(def.getName(), def.getType(), new Vector<STO>()  ,params, null);
+                   // add 11/28 "new" 
+                   this.DoCtorStructs("new " +def.getName(), def.getType(), new Vector<STO>()  ,params, null);
         
                 }
                 else if(!(((PointerType)sto.getType()).getNext() instanceof StructType)) {
