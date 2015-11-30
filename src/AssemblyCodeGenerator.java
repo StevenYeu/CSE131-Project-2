@@ -2926,6 +2926,11 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, sto.getBase(), "%l7", "%l7");
         this.decreaseIndent();
 
+        // added 11/29
+        if(sto.flag || sto.getIsPointer() || sto.getArrayTag() || sto.getStructTag()) {
+           this.load(l7,l7);
+        }
+
         // ld [%l7], reg
         this.increaseIndent();
         this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", reg);
@@ -4082,9 +4087,12 @@ public class AssemblyCodeGenerator {
                        this.writeAssembly(THREE_PARAM, ADD_OP, value.getBase(), "%o"+String.valueOf(reg), "%o"+String.valueOf(reg));
                        this.decreaseIndent();
 
+                     
+                    
 
                        // ADDED if arg passed in to function param is a ref
-                       if(value.flag == true) {
+                       // 11/29 added
+                       if(value.flag == true || value.getStructTag() || value.getArrayTag() || value.getIsPointer()) {
                           // ld [%l7], %o1
                           this.increaseIndent();
                           this.writeAssembly(TWO_PARAM, LOAD_OP,  "["+"%o"+String.valueOf(reg)+"]", "%o"+String.valueOf(reg));
@@ -4323,7 +4331,7 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
        
-        if(expr.getIsPointer() || expr.flag || expr.getArrayTag()) {
+        if(expr.getIsPointer() || expr.flag || expr.getArrayTag() || expr.getStructTag()) {
               this.increaseIndent();
               this.writeAssembly(TWO_PARAM, LOAD_OP, "["+reg+"]", reg);
               this.decreaseIndent();
@@ -5027,26 +5035,39 @@ public class AssemblyCodeGenerator {
             this.DoSameAndPointer(casted,cast,offset);
         
         }
-
-
     
     }
+
 
     public void DoIntToFloat(STO casted,Type cast, STO offset) {
        
        this.writeAssembly(NEWLINE);
-        // ! comment
+       // ! comment
        this.increaseIndent();
        this.writeAssembly(NO_PARAM, "! ( "+cast.getName() + " )" +casted.getName());
        this.decreaseIndent();
 
-       // does set add
-       this.getVar(casted,l7);
-       this.load(l7,f0);
-       this.fstoi(f0);
-       // does set add
-       this.getVar(offset,o1);
-       this.store(f0,o1);
+       if(casted instanceof ConstSTO && !(((ConstSTO)casted).getLitTag()) ) {
+          // this.getVar(casted,l7);
+          // int val = (int)(((ConstSTO)casted).getFloatValue());
+          // this.setVal(String.valueOf(val),o0);
+           //this.store(o0,o1);
+       }
+       else {
+
+          // does set add
+          this.getVar(casted,l7);
+          this.load(l7,f0);
+          this.fstoi(f0);
+          // does set add
+          this.getVar(offset,o1);
+          this.store(f0,o1);
+       
+       }
+        
+        
+
+
 
     }
 
@@ -5058,15 +5079,25 @@ public class AssemblyCodeGenerator {
         this.increaseIndent();
         this.writeAssembly(NO_PARAM, "! ( "+cast.getName() + " )" +casted.getName());
         this.decreaseIndent();
-        
-        this.getVar(casted,l7);
-        this.load(l7,o0);
-        this.getVar(promote,l7);
-        this.store(o0,l7);
-        this.load(l7,f0);
-        this.fitos(f0);
-        this.getVar(Offset,o1);
-        this.store(f0,o1);
+       
+        if(casted instanceof ConstSTO && !(((ConstSTO)casted).getLitTag()) ) {
+          // this.getVar(casted,l7);
+          // this.DoFloatRoData(casted,f0);
+           //this.store(f0,o1);
+        }
+        else {
+           this.getVar(casted,l7);
+           this.load(l7,o0);
+           this.getVar(promote,l7);
+           this.store(o0,l7);
+           this.load(l7,f0);
+           this.fitos(f0);
+           this.getVar(Offset,o1);
+           this.store(f0,o1);
+        }
+
+
+
 
     }
 
@@ -5080,15 +5111,38 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(NO_PARAM, "! ( "+cast.getName() + " )" +casted.getName());
         this.decreaseIndent();
 
-        this.getVar(casted,l7);
-        this.load(l7,o0);
-        this.compare(CMP_OP,o0,g0);
-        this.branch(BE_OP,label);
-        this.move(g0,o0);
-        this.move(String.valueOf(1),o0);
-        this.label(label+":");
-        this.getVar(offset,o1);
-        this.store(o0,o1); 
+       if(casted instanceof ConstSTO && !(((ConstSTO)casted).getLitTag()) ) {
+           /*if(casted.getType() instanceof BoolType && cast instanceof IntType) {
+              this.getVar(casted,l7);
+              boolean val = (((ConstSTO)casted).getBoolValue());
+              int valint = val ? 1 : 0;
+              this.setVal(String.valueOf(valint),o0);
+              this.store(o0,o1);
+           }
+           else if(casted.getType() instanceof IntType && cast instanceof BoolType) {
+              this.getVar(casted,l7);
+              int val = (((ConstSTO)casted).getIntValue());
+              if(val > 0) {val = 1;}
+              else {val = 0;}
+              this.setVal(String.valueOf(val),o0);
+              this.store(o0,o1);
+           }*/
+       }
+       else {
+       
+
+           this.getVar(casted,l7);
+           this.load(l7,o0);
+           this.compare(CMP_OP,o0,g0);
+           this.branch(BE_OP,label);
+           this.move(g0,o0);
+           this.move(String.valueOf(1),o0);
+           this.label(label+":");
+           this.getVar(offset,o1);
+           this.store(o0,o1); 
+       }
+
+
     
     }
 
@@ -5101,20 +5155,36 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(NO_PARAM, "! ( "+cast.getName() + " )" +casted.getName());
         this.decreaseIndent();
 
-        this.getVar(casted,l7);
-        this.load(l7,f0);
-        this.getVar(promote,l7);
-        this.store(g0,l7);
-        this.load(l7,f1);
-        this.fitos(f1);
-        this.compare(FCMP_OP,f0,f1);
-        this.nop();
-        this.branch(FBE_OP,label);
-        this.move(g0,o0);
-        this.move(String.valueOf(1),o0);
-        this.label(label+":");
-        this.getVar(offset,o1);
-        this.store(o0,o1);
+
+       if(casted instanceof ConstSTO && !(((ConstSTO)casted).getLitTag()) ) {
+           /*if(casted.getType() instanceof FloatType && cast instanceof BoolType) {
+              this.getVar(casted,l7);
+              float val = (((ConstSTO)casted).getFloatValue());
+              if(val > 0) {val = 1;}
+              else {val = 0;}
+              this.setVal(String.valueOf(val),o0);
+              this.store(o0,o1);
+           }*/
+       }
+       else {
+              this.getVar(casted,l7);
+              this.load(l7,f0);
+              this.getVar(promote,l7);
+              this.store(g0,l7);
+              this.load(l7,f1);
+              this.fitos(f1);
+              this.compare(FCMP_OP,f0,f1);
+              this.nop();
+              this.branch(FBE_OP,label);
+              this.move(g0,o0);
+              this.move(String.valueOf(1),o0);
+              this.label(label+":");
+              this.getVar(offset,o1);
+              this.store(o0,o1);
+       
+       }
+
+
 
     
     }
@@ -5128,32 +5198,52 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(NO_PARAM, "! ( "+cast.getName() + " )" +casted.getName());
         this.decreaseIndent();
 
-        this.getVar(casted,l7);
-        this.load(l7,o0);
-        this.compare(CMP_OP,o0,g0);
-        this.branch(BE_OP,label);
-        this.move(g0,o0);
-        this.move(String.valueOf(1),o0);
-        this.label(label+":");
-        this.getVar(promote,l7);
-        this.store(o0,l7);
-        this.load(l7,f0);
-        this.fitos(f0);
-        this.getVar(offset,o1);
-        this.store(f0,o1);
+        if(casted instanceof ConstSTO && !(((ConstSTO)casted).getLitTag()) ) {
+           /*if(casted.getType() instanceof BoolType && cast instanceof FloatType) {
+              this.getVar(casted,l7);
+              this.DoFloatRoData(casted,f0);
+              this.store(o0,o1);
+           }*/
+        }
+        else {
+
+           this.getVar(casted,l7);
+           this.load(l7,o0);
+           this.compare(CMP_OP,o0,g0);
+           this.branch(BE_OP,label);
+           this.move(g0,o0);
+           this.move(String.valueOf(1),o0);
+           this.label(label+":");
+           this.getVar(promote,l7);
+           this.store(o0,l7);
+           this.load(l7,f0);
+           this.fitos(f0);
+           this.getVar(offset,o1);
+           this.store(f0,o1);
+        }
     }
 
     public void DoSameAndPointer(STO casted,Type cast,STO offset) {
+        
+        
         this.writeAssembly(NEWLINE);
         // ! comment
         this.increaseIndent();
         this.writeAssembly(NO_PARAM, "! ( "+cast.getName() + " )" +casted.getName());
         this.decreaseIndent();
 
-        this.getVar(casted,l7);
-        this.load(l7,o0);
-        this.getVar(offset,o1);
-        this.store(o0,o1);
+        if(casted instanceof ConstSTO && !(((ConstSTO)casted).getLitTag()) ) {
+        }
+        else {
+           this.getVar(casted,l7);
+           if(casted.getStructTag() || casted.getArrayTag() || casted.getIsPointer()) {
+              this.load(l7,l7);
+           }
+           this.load(l7,o0);
+           this.getVar(offset,o1);
+           this.store(o0,o1);
+        }
+
 
          
     }
@@ -5168,6 +5258,13 @@ public class AssemblyCodeGenerator {
        this.writeAssembly(THREE_PARAM,ADD_OP,sto.getBase(),reg,reg);
        this.decreaseIndent();
     
+    }
+
+    public void setVal(String val, String reg) {
+       this.increaseIndent();
+       this.writeAssembly(TWO_PARAM,SET_OP,val,reg);
+       this.decreaseIndent();
+
     }
 
     public void store(String reg1, String reg2) {

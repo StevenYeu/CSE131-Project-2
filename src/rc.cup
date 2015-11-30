@@ -541,13 +541,18 @@ Array ::=           T_LBRACKET ConstExpr:_1 T_RBRACKET
 
 
 CodeBlock ::=       T_LBRACE
-                    {: //((MyParser) parser).DoBlockOpen();
+                    {: 
+                        if(!((MyParser) parser).getDoInForEach()){
+                           ((MyParser) parser).DoBlockOpen();
+                        }
                     :}
                     OptStmtList
                     {: 
 
                       //  ((MyParser) parser).DoExitLoop();
-                      //  ((MyParser) parser).DoBlockClose();
+                      if(!((MyParser) parser).getDoInForEachPop()){
+                        ((MyParser) parser).DoBlockClose();
+                      }
                     :}
                     T_RBRACE
     ;
@@ -675,11 +680,11 @@ IfStmt ::=          T_IF Expr:_1
                     {:
 
                         RESULT =((MyParser) parser).DoIf(_1);
-                        ((MyParser) parser).DoBlockOpen();
+                        //((MyParser) parser).DoBlockOpen();
                     :}
                     CodeBlock
                     {:
-                        ((MyParser) parser).DoBlockClose();
+                        //((MyParser) parser).DoBlockClose();
                         ((MyParser) parser).CallDoElse();
                     :}
                     OptElse
@@ -692,11 +697,11 @@ IfStmt ::=          T_IF Expr:_1
 
 OptElse ::=         T_ELSE
                     {:
-                        ((MyParser) parser).DoBlockOpen();
+                        //((MyParser) parser).DoBlockOpen();
                     :}
                     CodeBlock
                     {:
-                        ((MyParser) parser).DoBlockClose();
+                        //((MyParser) parser).DoBlockClose();
                     :}
     |               /* empty */
     ;
@@ -711,11 +716,11 @@ WhileStmt ::=       T_WHILE
                         RESULT =((MyParser) parser).DoWhile(_1);
 
                         ((MyParser) parser).DoInLoop();
-                        ((MyParser) parser).DoBlockOpen();
+                        //((MyParser) parser).DoBlockOpen();
                     :}
                     CodeBlock
                     {:
-                        ((MyParser) parser).DoBlockClose();
+                        //((MyParser) parser).DoBlockClose();
                         ((MyParser) parser).CallDoWhileCloseLoop();
                         ((MyParser) parser).DoExitLoop();
                     :}
@@ -727,6 +732,7 @@ ForeachStmt ::=     T_FOREACH T_LPAREN Type:_1 OptRef:_2 T_ID:_3 T_COLON Expr:_4
                     {:
                         ((MyParser) parser).DoBlockOpen();
                         ((MyParser) parser).DoInLoop();
+                        ((MyParser) parser).setDoInForEach(true);
                         ((MyParser) parser).DoForEachDecl (_1,_2,_3,_4); //changed Done
                     :}
                     CodeBlock
@@ -735,6 +741,7 @@ ForeachStmt ::=     T_FOREACH T_LPAREN Type:_1 OptRef:_2 T_ID:_3 T_COLON Expr:_4
 
                         ((MyParser) parser).DoExitLoop();
                         ((MyParser) parser).DoBlockClose();
+                        //((MyParser) parser).setDoInForEach(false);
                     :}
     ;
 

@@ -8,6 +8,7 @@ import java_cup.runtime.*;
 import java.util.Vector;
 import java.util.List;
 import java.util.HashMap;
+import java.util.Stack;
 class MyParser extends parser
 {
 	private Lexer m_lexer;
@@ -44,7 +45,9 @@ class MyParser extends parser
     private STO newSto;
     // for new case in doctor
     private boolean inNewIsPointer = false;
-
+    // for codeblock in for each stmt
+    private boolean isInForEach = false;
+    private Stack<Boolean> ForEachStack = new Stack<Boolean>();
 	private SymbolTable m_symtab;
 	//----------------------------------------------------------------
 	//
@@ -1726,6 +1729,32 @@ class MyParser extends parser
         
     }
 
+    //---------------------
+    //
+    //---------------------
+    void setDoInForEach(boolean b){
+        ForEachStack.push(b);
+    }
+    //---------------------
+    //
+    //---------------------
+    boolean getDoInForEach(){
+        if(ForEachStack.isEmpty()){
+            return false;
+        }
+        return ForEachStack.peek();
+    }
+
+    //---------------------
+    //
+    //---------------------
+    boolean getDoInForEachPop(){
+        if(ForEachStack.isEmpty()){
+            return false;
+        }
+
+        return ForEachStack.pop();
+    }
     //----------------------------------------------------------------
 	//
 	//----------------------------------------------------------------
@@ -2946,6 +2975,7 @@ class MyParser extends parser
            Type funsCurType; // the type of the func param
            if(overloaded.isEmpty()) {
               // do something
+              System.out.println("In");
            }
            else if (overloaded.size() == 1) { // non overload case
               int overParSize = ((FuncSTO)overloaded.get(0)).getParams().size();
@@ -3445,6 +3475,7 @@ class MyParser extends parser
                 if(locals.get(i).getName().equals(strID)){
                     if(locals.get(i) instanceof FuncSTO) {
                       this.setStructFunCall(true);
+                      codegen.DoCtorThis(sto);
                       return locals.get(i);
                     }
                     // Assembly write: struct call
@@ -4625,12 +4656,27 @@ class MyParser extends parser
            for (int i = 0;i < locals.size() ; i++) {
            	   if(locals.get(i).getName().equals(strID)) {
 
+                   STO temp;
                    if(locals.get(i) instanceof FuncSTO) {
-                      return locals.get(i);
-                   }
+                       temp = new FuncSTO(locals.get(i).getName(), locals.get(i).getType());
+                       ((FuncSTO)temp).setReturnType(locals.get(i).getType());
+                       ((FuncSTO)temp).setParams(((FuncSTO)locals.get(i)).getParams());
+                       temp.flag = locals.get(i).flag;
+                       temp.setOffset(String.valueOf(++offsetCnt * -4));
+                       temp.setBase("%fp");
+                       temp.setIsPointer(true);
 
-                  //STO temp = locals.get(i);
-                  STO temp = new VarSTO(locals.get(i).getName(), locals.get(i).getType()); 
+
+                       codegen.DoDereference(sto, temp);
+
+                       this.setStructFunCall(true);
+                       codegen.DoCtorThis(temp);
+           	           return temp;
+
+                   }
+                  
+                  temp = new VarSTO(locals.get(i).getName(), locals.get(i).getType()); 
+                  
                   //temp.setStructTag(locals.get(i).getStructTag());
                   temp.setStructOffset(locals.get(i).getStructOffset()); 
                   offsetCnt++;
@@ -5024,7 +5070,10 @@ class MyParser extends parser
                }
                else if(t instanceof PointerType && typ instanceof BasicType){
                     res = new ExprSTO(sto.getName(), t);
-               }            
+               }
+               else {
+                  return sto;
+               }
             
             }
             else{
@@ -5032,8 +5081,17 @@ class MyParser extends parser
 
                 
             }
-            res.setOffset(String.valueOf(++offsetCnt  * -4));
-            res.setBase("%fp");
+            if(sto instanceof ConstSTO){
+                if(((ConstSTO)sto).getLitTag()) {
+                   res.setOffset(String.valueOf(++offsetCnt  * -4));
+                   res.setBase("%fp");
+                }
+            }
+            else {
+                res.setOffset(String.valueOf(++offsetCnt  * -4));
+                res.setBase("%fp");
+
+            }
 
             if( (t instanceof FloatType) && (sto.getType() instanceof IntType || sto.getType() instanceof BoolType)
                  || (t instanceof BoolType && sto.getType() instanceof FloatType)   ) {
