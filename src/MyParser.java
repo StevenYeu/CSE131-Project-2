@@ -20,6 +20,7 @@ class MyParser extends parser
 	private int m_nSavedLineNum;
     private boolean paramAmp = false;
     private int isInLoop = 0;
+    private int isInIf = 0;
     private boolean isInStruct = false; // if inside structdef decl
     private boolean isMultiError = false; 
     private Scope scope;
@@ -3660,7 +3661,7 @@ class MyParser extends parser
         if (isInStruct) {
 
 
-            if(isInLoop ==0){
+            if(isInLoop ==0 && isInIf == 0){
         	   if ((sto = m_symtab.accessLocal(strID)) == null ) {	
            
         	       if((sto = m_symtab.accessGlobal(strID)) == null){    
@@ -4600,8 +4601,16 @@ class MyParser extends parser
         isInLoop += 1;
     }
 
+    void DoInIf(){
+        isInIf += 1;
+    }
+
     void DoExitLoop(){
         isInLoop -= 1;
+    }
+
+    void DoExitIf(){
+        isInIf -= 1;
     }
 
     void DoBreak(){

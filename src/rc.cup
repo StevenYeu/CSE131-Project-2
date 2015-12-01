@@ -681,10 +681,12 @@ IfStmt ::=          T_IF Expr:_1
 
                         RESULT =((MyParser) parser).DoIf(_1);
                         //((MyParser) parser).DoBlockOpen();
+                        ((MyParser) parser).DoInIf();
                     :}
                     CodeBlock
                     {:
                         //((MyParser) parser).DoBlockClose();
+                        ((MyParser) parser).DoExitIf();
                         ((MyParser) parser).CallDoElse();
                     :}
                     OptElse
@@ -698,9 +700,11 @@ IfStmt ::=          T_IF Expr:_1
 OptElse ::=         T_ELSE
                     {:
                         //((MyParser) parser).DoBlockOpen();
+                        ((MyParser) parser).DoInIf();
                     :}
                     CodeBlock
                     {:
+                        ((MyParser) parser).DoExitIf();
                         //((MyParser) parser).DoBlockClose();
                     :}
     |               /* empty */
