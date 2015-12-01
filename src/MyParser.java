@@ -3651,18 +3651,36 @@ class MyParser extends parser
 	STO DoDesignator3_ID(String strID)
 	{
 		STO sto;
+        sto = new VarSTO("temp");
         //change accesslocal to access might break things
         if (isInStruct) {
-        	if ((sto = m_symtab.accessLocal(strID)) == null ) {	
+
+
+            if(isInLoop ==0){
+        	   if ((sto = m_symtab.accessLocal(strID)) == null ) {	
            
-        	    if((sto = m_symtab.accessGlobal(strID)) == null){    
+        	       if((sto = m_symtab.accessGlobal(strID)) == null){    
+        	          m_nNumErrors++;
+        	          m_errors.print(Formatter.toString(ErrorMsg.undeclared_id, strID));
+        	          sto = new ErrorSTO(strID);
+        	          return sto;
+        	            
+        	       }
+        	   }
+               
+            }
+            else {
+        	    if ((sto = m_symtab.access(strID)) == null ) {  
         	       m_nNumErrors++;
         	       m_errors.print(Formatter.toString(ErrorMsg.undeclared_id, strID));
         	       sto = new ErrorSTO(strID);
         	       return sto;
-        	            
         	    }
-        	}
+
+
+            
+            
+           }
 
         }
         else {

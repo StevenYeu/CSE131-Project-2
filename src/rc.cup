@@ -542,17 +542,17 @@ Array ::=           T_LBRACKET ConstExpr:_1 T_RBRACKET
 
 CodeBlock ::=       T_LBRACE
                     {: 
-                        if(!((MyParser) parser).getDoInForEach()){
+                        //if(!((MyParser) parser).getDoInForEach()){
                            ((MyParser) parser).DoBlockOpen();
-                        }
+                        //}
                     :}
                     OptStmtList
                     {: 
 
                       //  ((MyParser) parser).DoExitLoop();
-                      if(!((MyParser) parser).getDoInForEachPop()){
+                      //if(!((MyParser) parser).getDoInForEachPop()){
                         ((MyParser) parser).DoBlockClose();
-                      }
+                      //}
                     :}
                     T_RBRACE
     ;
@@ -732,7 +732,7 @@ ForeachStmt ::=     T_FOREACH T_LPAREN Type:_1 OptRef:_2 T_ID:_3 T_COLON Expr:_4
                     {:
                         ((MyParser) parser).DoBlockOpen();
                         ((MyParser) parser).DoInLoop();
-                        ((MyParser) parser).setDoInForEach(true);
+                        //((MyParser) parser).setDoInForEach(true);
                         ((MyParser) parser).DoForEachDecl (_1,_2,_3,_4); //changed Done
                     :}
                     CodeBlock

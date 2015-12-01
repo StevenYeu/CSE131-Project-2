@@ -1343,7 +1343,7 @@ public class AssemblyCodeGenerator {
             this.getVar(expr, l7);
         
              // check for pointer, array
-             if(expr.getArrayTag() || expr.getIsPointer() || expr.flag){
+             if(expr.getArrayTag() || expr.getIsPointer() || expr.flag || expr.getStructTag()){
                  this.increaseIndent();
                  this.writeAssembly(TWO_PARAM, LOAD_OP, "[%l7]", "%l7");
                  this.decreaseIndent();
@@ -1764,7 +1764,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, a.getBase(), "%o0", "%o0");
         this.decreaseIndent();
 
-        if(a.getIsPointer()){
+        if(a.getIsPointer() || a.getArrayTag()){
             this.load(o0, o0);
         }
         // set  b.offset, %o0
@@ -1777,7 +1777,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, b.getBase(), "%o1", "%o1");
         this.decreaseIndent();
 
-        if(b.getIsPointer()){
+        if(b.getIsPointer() || b.getArrayTag()){
             this.load(o1, o1);
         }
 
@@ -3036,8 +3036,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, a.getBase(), "%o1", "%o1");
         this.decreaseIndent();
 
-        // for array
-        if(a.getArrayTag() || a.getStructTag() || a.flag){
+        if(a.getArrayTag() || a.getStructTag() || a.flag || a.getIsPointer()){
             //ld    [%o1], %o1
             this.increaseIndent();
             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1");
@@ -3104,7 +3103,7 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
         // for array struct ref
-        if(a.getArrayTag() || a.getStructTag() || a.flag){
+        if(a.getArrayTag() || a.getStructTag() || a.flag || a.getIsPointer()){
             //ld    [%o1], %o1
             this.increaseIndent();
             this.writeAssembly(TWO_PARAM, LOAD_OP, "[%o1]", "%o1");
@@ -3402,6 +3401,7 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(), "%o0", "%o0");
         this.decreaseIndent();
 
+        System.out.println(sto.getName());
         // changed 11/29 from flag to isStructTag
         if(sto.getStructTag()){
             this.load(o0, o0);
