@@ -959,7 +959,7 @@ public class AssemblyCodeGenerator {
             this.decreaseIndent();
 
             //added 11/29
-            if(expr.getIsPointer()) {
+            if(expr.getIsPointer() || expr.getStructTag() || expr.getArrayTag()) {
                this.load(l7,l7);
             }
 
