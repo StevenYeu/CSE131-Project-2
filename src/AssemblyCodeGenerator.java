@@ -400,6 +400,11 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(ONE_PARAM, SECTION, "\".rodata\"");
         this.decreaseIndent();
 
+        // .align 4
+        this.increaseIndent();
+        this.writeAssembly(ONE_PARAM, ALIGN, String.valueOf(4));
+        this.decreaseIndent();
+
         // .$$.intFmt:
         this.writeAssembly(NO_PARAM, DOLLAR + "intFmt:");
         
@@ -3384,7 +3389,7 @@ public class AssemblyCodeGenerator {
 
         //! comment 
         this.increaseIndent();
-        this.writeAssembly(NO_PARAM, "! forrach ( ... )");
+        this.writeAssembly(NO_PARAM, "! foreach ( ... )");
         this.decreaseIndent();
         
         //! traversal ptr = --array 
@@ -3402,8 +3407,8 @@ public class AssemblyCodeGenerator {
         this.writeAssembly(THREE_PARAM, ADD_OP, expr.getBase(), "%o0", "%o0");
         this.decreaseIndent();
 
-        // changed 11/29 from flag to isStructTag
-        if(sto.getStructTag()){
+        // changed 11/29 from flag to isStructTag -- changed 11/30 from sto to expr
+        if(expr.getStructTag()){
             this.load(o0, o0);
 
         }
@@ -3488,8 +3493,8 @@ public class AssemblyCodeGenerator {
         this.decreaseIndent();
 
 
-        // changed 11/29 from flag to isStructTag
-        if(sto.getStructTag()){
+        // changed 11/29 from flag to isStructTag -- 11/30 from sto to expr
+        if(expr.getStructTag()){
             this.load(o0, o0);
         }
 
