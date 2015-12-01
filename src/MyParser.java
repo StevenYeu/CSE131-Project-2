@@ -2807,7 +2807,8 @@ class MyParser extends parser
             codegen.setholdOff(true);
         }
 
-        if(b instanceof ConstSTO){
+        // change it to lit only
+        if(b instanceof ConstSTO && !((ConstSTO)b).getLitTag()){
     
             //float case
             if(a.getType() instanceof FloatType){
@@ -3453,6 +3454,8 @@ class MyParser extends parser
                       this.setStructFunCall(true);
                     }
                     STO result= locals.get(i);
+                    
+                    result.setStructTag(locals.get(i).getStructTag());
                     if(!(result instanceof FuncSTO)){
                        offsetCnt++;
                        result.setOffset(String.valueOf(offsetCnt * -4));
@@ -3483,6 +3486,7 @@ class MyParser extends parser
                     if(!(locals.get(i) instanceof FuncSTO)){
                         // pass along all the tag
                         result.flag = locals.get(i).flag;
+                     
                         result.setStructTag(locals.get(i).getStructTag());
                         result.setArrayTag(locals.get(i).getArrayTag());
                         result.setStructOffset(locals.get(i).getStructOffset());
@@ -4888,7 +4892,26 @@ class MyParser extends parser
            m_errors.print(Formatter.toString(ErrorMsg.error16_Delete, sto.getType().getName()));
            return new ErrorSTO("error");           
         }
-        codegen.DoDelete(sto);
+        // add 11/30 below for pointer to struct case 
+        this.setNewCall(true);
+        if(sto.getType() instanceof PointerType) {
+            
+            if(!(((PointerType)sto.getType()).getNext() instanceof StructType)) {
+                    
+                codegen.DoDelete(sto);
+                return sto;
+            }
+            else if(((PointerType)sto.getType()).getNext() instanceof StructType){
+                STO def = this.DoDereference(sto);
+                this.setInNew(def.getIsPointer());
+                 
+                this.DoCtorStructs("delete "+def.getName(), def.getType(), new Vector<STO>() , new Vector<STO>(), null);
+                codegen.DoDelete(sto);
+                
+            }
+            
+
+        }
         return sto;
     }
 
