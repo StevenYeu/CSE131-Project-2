@@ -1709,7 +1709,16 @@ public class AssemblyCodeGenerator {
 
         }
         else {
-            this.writeAssembly(ONE_PARAM, CALL_OP, sto.getType().getName()+"."+sto.getType().getName()+"."+func.getAssemblyName());
+
+            if(func.getName().contains("~")) {
+               this.writeAssembly(ONE_PARAM, CALL_OP, sto.getType().getName()+".$"+sto.getType().getName()+"."+func.getAssemblyName());
+            
+            }
+            else {
+            
+               this.writeAssembly(ONE_PARAM, CALL_OP, sto.getType().getName()+"."+sto.getType().getName()+"."+func.getAssemblyName());
+            }
+
 
         }
         this.decreaseIndent();

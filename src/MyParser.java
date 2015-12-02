@@ -582,8 +582,15 @@ class MyParser extends parser
 
      STO result = new VarSTO(t.getName(),typ); // struct var thats goes int the table
      STO sto = new VarSTO(t.getName(),typ); // temp
+     Vector<STO> overloaded; 
+     if(id.contains("~")){
+         overloaded = ((StructType)typ).OverloadCheckStructCall("~"+typ.getName()); // of constructors
+     }
+     else {
+
+        overloaded = ((StructType)typ).OverloadCheckStructCall(typ.getName()); // of constructors
      
-     Vector<STO> overloaded = ((StructType)typ).OverloadCheckStructCall(typ.getName()); // of constructors
+     }
 
 		 if (overloaded.size() == 1) { // non overload case
 
@@ -716,7 +723,6 @@ class MyParser extends parser
                       }
                       result.setStructName(fun.getStructName());
                       result.setAssemblyName(((FuncSTO)fun).getAssemblyName());
-
                       codegen.DoCtor(result, fun);
                       // dtor stuff regular for no param case
                       
@@ -766,7 +772,7 @@ class MyParser extends parser
                   //if(result instanceof ErrorSTO) {return;}
                  if(this.getNewCall() ) {
                    result = newCall;
-                   this.setNewCall(false);
+                   //this.setNewCall(false);
 
                  }
                  // array case
@@ -931,7 +937,7 @@ class MyParser extends parser
            result = this.DoOverloadCall(sto,params,overloaded);
            if(this.getNewCall() ) {
              result = newCall;
-             this.setNewCall(false);
+             //this.setNewCall(false);
 
            }
            // array case
@@ -2977,7 +2983,6 @@ class MyParser extends parser
            Type funsCurType; // the type of the func param
            if(overloaded.isEmpty()) {
               // do something
-              System.out.println("In");
            }
            else if (overloaded.size() == 1) { // non overload case
               int overParSize = ((FuncSTO)overloaded.get(0)).getParams().size();
@@ -4914,7 +4919,7 @@ class MyParser extends parser
                 STO def = this.DoDereference(sto);
                 this.setInNew(def.getIsPointer());
                  
-                this.DoCtorStructs("delete "+def.getName(), def.getType(), new Vector<STO>() , new Vector<STO>(), null);
+                this.DoCtorStructs("~"+def.getName(), def.getType(), new Vector<STO>() , new Vector<STO>(), null);
                 codegen.DoDelete(sto);
                 
             }
