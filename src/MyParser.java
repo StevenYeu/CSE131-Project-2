@@ -3186,7 +3186,7 @@ class MyParser extends parser
                    String offset = String.valueOf(val);
                    result.setOffset(offset);
                    result.setBase("%fp");
-               
+                   result.flag = fun.flag; 
                    offsetCnt = codegen.DoFuncCallParam(result, fun, params, offsetCnt);
 
 
@@ -3362,6 +3362,7 @@ class MyParser extends parser
                          String offset = String.valueOf(val);
                          result.setOffset(offset);
                          result.setBase("%fp");
+                         result.flag = fun.flag; 
 
                          if(this.GetSavedLineCnt() == 0){
                              this.SaveLineCnt();
